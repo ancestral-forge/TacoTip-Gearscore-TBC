@@ -22,6 +22,7 @@ read_globals = {
     "CONTAINER_OFFSET_X",
     "CONTAINER_OFFSET_Y",
     "CreateFrame",
+    "GetNumTalentGroups",
     "CUSTOM_CLASS_COLORS",
     "DetachTooltip",
     "ERR_INVALID_INSPECT_TARGET",

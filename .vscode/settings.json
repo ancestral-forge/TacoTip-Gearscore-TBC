@@ -21,6 +21,7 @@
         "BackdropTemplateMixin",
         "Settings",
         "UIParent",
+        "GetNumTalentGroups",
         "WorldFrame",
         "PaperDollFrame",
         "InspectFrame",
