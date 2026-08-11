@@ -110,7 +110,7 @@ local defaults = {
 ["OPTIONS_PAGE_TOOLTIPS"] = "Tooltips",
 ["OPTIONS_PAGE_POSITIONING"] = "Positioning",
 ["OPTIONS_PAGE_CHARACTER_INSPECT"] = "Character & Inspect",
-["OPTIONS_PAGE_ADVANCED"] = "Advanced",
+
 ["OPTIONS_ROOT_DESCRIPTION"] = "TacoTip now organizes its settings into focused child pages so tooltip, positioning, and overlay controls are easier to find on Classic-era clients.",
 ["OPTIONS_ROOT_BEHAVIOR_HEADER"] = "Behavior & client settings",
 ["OPTIONS_ROOT_QUICK_ACTIONS"] = "Quick Actions",
@@ -183,8 +183,6 @@ local defaults = {
 ["OPTIONS_SHOW_REALM_DESC"] = "Show the realm name for players from other servers (cross-realm).",
 ["OPTIONS_SHOW_ILVL_INLINE"] = "iLvl on name line",
 ["OPTIONS_SHOW_ILVL_INLINE_DESC"] = "Show average item level next to the player's name instead of on a separate line.",
-["OPTIONS_SHOW_GS_DELTA"] = "GearScore change indicator",
-["OPTIONS_SHOW_GS_DELTA_DESC"] = "Show a delta indicator (▲/▼) next to GearScore when it changed since the last time you saw that player.",
 ["OPTIONS_SHOW_SEPARATORS"] = "Show section separators",
 ["OPTIONS_SHOW_SEPARATORS_DESC"] = "Add thin horizontal lines between logical sections of the tooltip for visual clarity.",
 ["OPTIONS_TOOLTIP_MAX_WIDTH"] = "Tooltip max width",
@@ -193,8 +191,8 @@ local defaults = {
 ["OPTIONS_TOOLTIP_DELAY_DESC"] = "Add a short delay before the tooltip appears. 0 = no delay.",
 ["Honor Rank"] = "Honor Rank",
 ["Realm"] = "Realm",
-["OPTIONS_SHOW_ELITE_FRAME"] = "Show elite indicator",
-["OPTIONS_SHOW_ELITE_FRAME_DESC"] = "Show the Elite, Rare, or Boss dragon border overlay on the portrait for non-player NPCs.",
+
+
 ["OPTIONS_TOOLTIP_FONT"] = "Tooltip font",
 ["OPTIONS_TOOLTIP_FONT_DESC"] = "Choose the font used by tooltip text. SharedMedia fonts from packs such as Merfin Plus are included automatically when available.",
 ["OPTIONS_TOOLTIP_FONT_SIZE"] = "Tooltip text size",
@@ -231,7 +229,7 @@ local defaults = {
 ["OPTIONS_CHARACTER_ILVL_OFFSETS"] = "Character iLvl offsets",
 ["OPTIONS_INSPECT_GS_OFFSETS"] = "Inspect GearScore offsets",
 ["OPTIONS_INSPECT_ILVL_OFFSETS"] = "Inspect iLvl offsets",
-["OPTIONS_ADVANCED_PAGE_DESC"] = "Lower-priority behavior toggles and client CVars that TacoTip can manage for you.",
+
 ["OPTIONS_HIDE_IN_COMBAT_LABEL"] = "Suppress inspection details in combat",
 ["OPTIONS_HIDE_IN_COMBAT_DESC"] = "Skips TacoTip's talents and GearScore-style player additions while you are in combat.",
 ["OPTIONS_ACHIEVEMENT_DESC"] = "Only available on Wrath Classic clients where achievement data exists.",

@@ -1,5 +1,5 @@
 local addOnName = ...
-local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.7"
+local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.8"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
 
@@ -115,7 +115,6 @@ function TT:GetDefaults()
         locale_override = nil,
         unlock_info_position = false,
         show_achievement_points = false,
-        show_gs_delta = false,
         show_honor_rank = false,
         show_ilvl_inline = false,
         show_realm = false,
@@ -165,7 +164,7 @@ function TT:SafeSanitizeConfig(config)
         "tooltip_background_use_class", "tooltip_portrait", "tooltip_portrait_3d",
         "instant_fade", "anchor_mouse", "anchor_mouse_world",
         "anchor_mouse_spells", "unlock_info_position", "show_achievement_points",
-        "show_gs_delta", "show_honor_rank", "show_ilvl_inline", "show_realm",
+        "show_honor_rank", "show_ilvl_inline", "show_realm",
         "show_role_icon", "show_separators"
     }
     for _, key in ipairs(booleanKeys) do
@@ -1731,13 +1730,6 @@ local function buildTooltipsPage()
     controls.showIlvlInline:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
 
-    controls.showGSDelta = createOptionsCheckbox(content, nil, L["OPTIONS_SHOW_GS_DELTA"] or "GearScore change indicator", L["OPTIONS_SHOW_GS_DELTA_DESC"] or "Show a delta indicator (▲/▼) next to GearScore when it changed since the last time you saw that player.", function(_, value)
-        TacoTipConfig.show_gs_delta = value
-        modernShowExampleTooltip()
-    end)
-    controls.showGSDelta:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
-    builder.y = builder.y - 30
-
     controls.showPowerBar = createOptionsCheckbox(content, nil, L["Power Bar"], L["Show unit's power bar under tooltip"], function(_, value)
         TacoTipConfig.show_power_bar = value; modernShowExampleTooltip()
         -- Live sync: apply the power bar visibility change to the current tooltip immediately
@@ -1974,18 +1966,23 @@ local function buildTooltipsPage()
         -- clear of the X). The preview reflects settings immediately; hybrid
         -- styles also expand on Shift like the live tooltip, so listen for
         -- modifier changes while this page is open.
+        -- F1: re-register the MODIFIER_STATE_CHANGED listener here as well.
+        -- The root optionsPages.tooltips:OnShow handler registers it on the
+        -- FIRST open, but buildTooltipsPage overwrites OnShow with this closure
+        -- on first build, so this is what runs on every subsequent open.
+        -- RegisterEvent is idempotent, so no duplicate listener is created.
+        panel:RegisterEvent("MODIFIER_STATE_CHANGED")
+        panel:SetScript("OnEvent", function(_, event)
+            if (event == "MODIFIER_STATE_CHANGED") then
+                modernShowExampleTooltip()
+            end
+        end)
         local pp = modernOptionsState.previewPane
         if (pp) then
             positionPreviewTopRight()
             pp:Show()
         end
         if (panel.Refresh) then panel:Refresh() end
-        panel:SetScript("OnEvent", function(_, event)
-            if (event == "MODIFIER_STATE_CHANGED") then
-                modernShowExampleTooltip()
-            end
-        end)
-        panel:RegisterEvent("MODIFIER_STATE_CHANGED")
     end)
     panel:SetScript("OnHide", function()
         panel:UnregisterEvent("MODIFIER_STATE_CHANGED")
@@ -2049,7 +2046,6 @@ local function buildTooltipsPage()
         controls.showRoleIcon:SetChecked(TacoTipConfig.show_role_icon)
         controls.showRealm:SetChecked(TacoTipConfig.show_realm)
         controls.showIlvlInline:SetChecked(TacoTipConfig.show_ilvl_inline)
-        controls.showGSDelta:SetChecked(TacoTipConfig.show_gs_delta)
         controls.showSeparators:SetChecked(TacoTipConfig.show_separators)
         controls.tooltipMaxWidth:SetValueSilently(TacoTipConfig.tooltip_max_width or 0)
         modernShowExampleTooltip()
@@ -2386,7 +2382,18 @@ local function onOptionsFrameShow(panel)
     modernGetConfig()
     modernShowExampleTooltip()
 end
+-- F1: register the live Shift-expand preview listener unconditionally so it
+-- is active on the FIRST page open. The build-time OnShow closure used to
+-- register it only after the page had already shown, delaying it by one open.
+-- (Do NOT gate on panel.Refresh — on the first open the page has not been
+-- built yet, so the guard would skip registration and reintroduce the bug.)
 optionsPages.tooltips:SetScript("OnShow", function(panel, ...)
+    panel:RegisterEvent("MODIFIER_STATE_CHANGED")
+    panel:SetScript("OnEvent", function(_, event)
+        if (event == "MODIFIER_STATE_CHANGED") then
+            modernShowExampleTooltip()
+        end
+    end)
     return safeCall(onPageShow, panel, ...)
 end)
 optionsPages.positioning:SetScript("OnShow", function(panel, ...)

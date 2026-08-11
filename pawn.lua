@@ -93,7 +93,8 @@ function TT_PAWN:GetScore(unitorguid, useCallback)
         -- Fall back to the primary spec (1) so Pawn still scores instead of
         -- producing a malformed scale name ("Classic":CLASS..nil) and 0.
         local spec = CI:GetSpecialization(guid) or 1
-        local _, class = GetPlayerInfoByGUID(guid)
+        local ppOk, _, PlayerEnglishClass = pcall(GetPlayerInfoByGUID, guid)
+        local class = ppOk and PlayerEnglishClass or nil
         local pawnScore = 0
         local IsReady = true
 

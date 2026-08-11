@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.7"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.8"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -20,7 +20,6 @@ local Detours = LibStub("LibDetours-1.0")
 local GearScore = _G.TT_GS
 local L = _G.TACOTIP_LOCALE
 
-TacoTipGSHistory = TacoTipGSHistory or {}
 local TT = _G[addOnName]
 
 if (not TT) then
@@ -76,6 +75,12 @@ local GetBestMapForUnit = _G.C_Map and _G.C_Map.GetBestMapForUnit
 local GameTooltip_SetDefaultAnchor = _G.GameTooltip_SetDefaultAnchor
 local UnitClass = _G.UnitClass
 local UnitCanAttack = _G.UnitCanAttack
+-- F3: deferred border re-apply timers (cancellable). Declared at module top so
+-- the assignments in ApplyTooltipAppearance (565) and onTooltipShow (1446) bind
+-- to THESE locals, not implicit globals — a mid-file `local` would be out of
+-- scope at the first assignment and silently defeat the flicker fix.
+local borderDeferTimer = nil
+local classBorderDeferTimer = nil
 local UnitExists = _G.UnitExists
 local UnitIsPlayer = _G.UnitIsPlayer
 local UnitIsUnit = _G.UnitIsUnit
@@ -563,7 +568,7 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
     -- frame after OnTooltipSetUnit completes).
     if ((TacoTipConfig.tooltip_border_use_class or TacoTipConfig.color_class) and isPlayerTooltip) then
         local deferralGen = tooltip._borderDeferralGen or 0
-        CAfter(0.05, function()
+        borderDeferTimer = CAfter(0.05, function()
             safeCall(function()
                 -- If the tooltip's border-deferral generation has changed since
                 -- we scheduled, the tooltip was recycled for different content
@@ -681,6 +686,24 @@ local function cancelDelayedTooltip()
     end
 end
 
+-- F3: track the deferred border re-apply timers so a fast tooltip recycle
+-- (map/minimap POI cycling) cannot paint a stale class border one frame late.
+-- Both the class-tinted border deferral (onTooltipShow) and the defensive
+-- backdrop re-apply (ApplyTooltipAppearance) schedule a C_Timer.After that is
+-- otherwise uncancellable — cancelDelayedTooltip() only cancels the unit
+-- tooltip timer, so these must be cancelled explicitly on every clear/show.
+-- (borderDeferTimer / classBorderDeferTimer are declared at the top of the file.)
+local function cancelDeferredAppearance()
+    if (borderDeferTimer) then
+        borderDeferTimer:Cancel()
+        borderDeferTimer = nil
+    end
+    if (classBorderDeferTimer) then
+        classBorderDeferTimer:Cancel()
+        classBorderDeferTimer = nil
+    end
+end
+
 local fadeTimer = nil
 local function cancelFadeTimer()
     if (fadeTimer) then
@@ -697,6 +720,7 @@ local function clearTooltipVisuals(tooltip)
 
 
     cancelDelayedTooltip()
+    cancelDeferredAppearance()
     clearTooltipPlayerClassColor(tooltip)
     resetTooltipBorderToDefault(tooltip)
     clearTooltipGuildLine(tooltip)
@@ -1105,29 +1129,16 @@ local function onTooltipSetUnit(tooltip)
                 local gearscore, avg_ilvl = GearScore:GetScore(guid, true)
                 if (gearscore > 0) then
                     local r, g, b = GearScore:GetQuality(gearscore)
-                    local gsDelta = ""
-                    if (TacoTipConfig.show_gs_delta and guid and gearscore > 0) then
-                        local lastGS = TacoTipGSHistory[guid]
-                        if (lastGS and lastGS > 0) then
-                            local diff = gearscore - lastGS
-                            if (diff > 0) then
-                                gsDelta = string.format(" |cFF00FF00▲%d|r", diff)
-                            elseif (diff < 0) then
-                                gsDelta = string.format(" |cFFFF0000▼%d|r", math.abs(diff))
-                            end
-                        end
-                        TacoTipGSHistory[guid] = gearscore
-                    end
                     if (wide_style) then
                         tinsert(linesToAdd,
-                            { "GearScore: " .. gearscore .. gsDelta, "(iLvl: " .. avg_ilvl .. ")", r, g, b, r, g, b })
+                            { "GearScore: " .. gearscore, "(iLvl: " .. avg_ilvl .. ")", r, g, b, r, g, b })
                     elseif (mini_style) then
-                        miniText = string.format("|cFF%02x%02x%02xGS: %s%s  L: %s|r  ", r * 255, g * 255, b * 255,
-                            gearscore, gsDelta, avg_ilvl)
+                        miniText = string.format("|cFF%02x%02x%02xGS: %s  L: %s|r  ", r * 255, g * 255, b * 255,
+                            gearscore, avg_ilvl)
                     else
                         tinsert(linesToAdd,
-                            { string.format("GearScore: |cFF%02x%02x%02x%s|r%s", r * 255, g * 255, b * 255, gearscore,
-                                gsDelta), 1, 1, 1 })
+                            { string.format("GearScore: |cFF%02x%02x%02x%s|r", r * 255, g * 255, b * 255, gearscore),
+                                1, 1, 1 })
                         if (avg_ilvl and avg_ilvl > 0) then
                             if (TacoTipConfig.show_ilvl_inline) then
                                 text[1] = text[1] ..
@@ -1437,7 +1448,7 @@ local function onTooltipShow(tooltip)
     end
 
     local deferralGen = tooltip._borderDeferralGen or 0
-    CAfter(0, function()
+    classBorderDeferTimer = CAfter(0, function()
         safeCall(function()
             -- If the tooltip was recycled since we scheduled, bail out.
             if (tooltip._borderDeferralGen ~= deferralGen) then

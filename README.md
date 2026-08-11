@@ -22,7 +22,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla, Burning Crusade Classic Anniversary, Wrath Classic, Titanforge / 3.80.1 |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.6.7` |
+| Public version | `v0.6.8` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -56,6 +56,14 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 - The tooltip mover reset flow now preserves the selected custom anchor instead of wiping it.
 - Long options pages now support proper mouse-wheel scrolling and correct content height instead of visually dead scrollbars.
 
+## What's new in v0.6.8
+
+- **GearScore change indicator (`show_gs_delta`) removed:** The `+N`/`▼N` delta shown next to GearScore on gear updates relied on a `TacoTipGSHistory` per-GUID tracking global and was the root cause of tooltip corruption/bugs. Fully removed (config default, option checkbox, computed delta, and `OPTIONS_SHOW_GS_DELTA` locale strings in all 10 locales). GearScore and iLvl are unaffected.
+- **Non-unit tooltip flicker fixed:** The two deferred `CAfter` border re-apply timers (defensive backdrop re-apply and class-tinted border) were uncancellable, so fast recycling over map/minimap POIs could paint a stale class border one frame late. Both timers are now tracked and cancelled by `cancelDeferredAppearance()` invoked from `clearTooltipVisuals`.
+- **Tooltips options page live Shift-expand preview fixed:** The `MODIFIER_STATE_CHANGED` listener driving the hybrid-style live expand-on-Shift preview was registered only after the page's second open; now registered on the first open (and re-registered in the build closure for subsequent opens).
+- **`REALM` i18n leak fixed:** `options.lua` read `L["REALM"]` (falling back to literal English "Realm") — non-English locales only translated the `Realm` key. Added translated `["REALM"]` entries to all 10 non-English locale files.
+- **Test suite:** Merged the two Classic-Era guild-fallback parsing checks into a single self-cleaning test; the previous version leaked mocked globals (`GetGuildInfo`/`UnitExists`/`GameTooltip.GetUnit`) into the following test when an assertion threw, causing a cascade failure.
+
 ## What's new in v0.6.7
 
 - **Power bar ticker leak on GameTooltip hide:** The `startPowerBarTicker` update ticker was not cancelled in the `GameTooltip:OnHide` hook — only `cancelDelayedTooltip()` was called. The ticker continued firing after the tooltip hid, consuming CPU until the next `clearTooltipVisuals`. Added `stopPowerBarTicker()` call to the `GameTooltip:OnHide` handler.
@@ -65,6 +73,8 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 - **Classic Tooltip API Modernization:** Refactored line queries across `main.lua` to use Blizzard's native C++ methods `tooltip:GetLeftLine(i)` and `tooltip:GetRightLine(i)` via `TT.GetTooltipLeftLine` and `TT.GetTooltipRightLine`. Replaced legacy string concatenations (`_G["GameTooltipTextLeft"..i]`) with direct line getters.
 - **Read-Before-Write Layout Optimization:** Added `tooltip:GetMinimumWidth()` check before calling `SetMinimumWidth(0)` in `TT:ApplyTooltipAppearance` to prevent unnecessary C++ layout recalculation passes.
 - **Power Bar Padding Encapsulation:** Integrated `tooltip:SetPadding(0, 10, 0, 0)` when `TacoTipPowerBar` is shown and `tooltip:ClearPadding()` in `clearTooltipVisuals` so tooltip backdrops cleanly encapsulate status bars.
+
+- **Dual-spec support (SoD / Classic Era):** Both talent specs a player has now display in the tooltip. `LibClassicInspector` previously hard-blocked the secondary spec on non-Wrath clients (`if (not isWotlk and group == 2) then return nil`), so dual-spec players showed no specs at all or the wrong (inactive) one. Replaced every `isWotlk`-style dual-spec guard with a `hasDualSpec` capability flag derived from `GetNumTalentGroups()` / `C_SpecializationInfo.GetNumSpecGroups(false)`, routed active-group resolution through `C_SpecializationInfo.GetActiveSpecGroup`, and cached both spec groups on inspect — so inspected players' secondary specs render too.
 - **Screen Boundary Protection:** Applied `tooltip:SetClampRectInsets(0, 0, 15, 15)` in `ApplyTooltipAppearance` to keep long player tooltips 100% visible on screen without edge clipping.
 - **Zero-Flicker Async Inspection Refresh:** Updated `TacoTip_GSCallback` to refresh via `GameTooltip:UpdateTooltip()` when available instead of re-calling `SetUnit`, eliminating tooltip position jump on async inspect updates.
 - **Unnamed Tooltip Support:** Removed strict global frame name dependencies in `applyTooltipFonts` and `onTooltipSetUnit` line read loops, enabling full font styling and line formatting support for third-party or unnamed tooltip frames.
