@@ -36,6 +36,9 @@ end
 --------------------------------------------------------------------------
 -- CallbackHandler:New
 --
+--   callbackHandler   - the library table itself, passed implicitly by the
+--                       colon-call convention (CallbackHandler:New(target, ...)).
+--                       Intentionally unused: this function only needs "target".
 --   target            - target object to embed public APIs in
 --   RegisterName      - name of the callback registration API, default "RegisterCallback"
 --   UnregisterName    - name of the callback unregistration API, default "UnregisterCallback"
@@ -76,7 +79,7 @@ function CallbackHandler.New(callbackHandler, target, RegisterName, UnregisterNa
 					-- fire OnUsed callback?
 					if first and registry.OnUsed then
 						registry.OnUsed(registry, target, queuedEventName)
-						first = nil
+						first = false
 					end
 				end
 			end

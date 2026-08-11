@@ -673,7 +673,6 @@ function TacoTip_GSCallback(guid)
     end
 end
 
-
 local delayedTooltipTimer = nil
 local function cancelDelayedTooltip()
     if (delayedTooltipTimer) then
@@ -756,14 +755,9 @@ local function onTooltipSetUnit(tooltip)
 
     local wide_style = (TacoTipConfig.tip_style == 1 or ((TacoTipConfig.tip_style == 2 or TacoTipConfig.tip_style == 4) and IsShiftKeyDown()))
     local mini_style = (not wide_style and (TacoTipConfig.tip_style == 4 or TacoTipConfig.tip_style == 5))
-
-
-
     local text = {}
     local linesToAdd = {}
-
     local numLines = tooltip:NumLines()
-
     for i = 1, numLines do
         local leftLine = getTooltipLeftLine(tooltip, i)
         text[i] = leftLine and leftLine:GetText()
@@ -840,7 +834,8 @@ local function onTooltipSetUnit(tooltip)
                             NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g,
                             HIGHLIGHT_FONT_COLOR.b })
                 else
-                    tinsert(linesToAdd, { L["Target"] .. ": |cFFFFFFFF" .. targetName .. " (" .. L["Pet"] .. ")|r", 1, 1, 1 })
+                    tinsert(linesToAdd,
+                        { L["Target"] .. ": |cFFFFFFFF" .. targetName .. " (" .. L["Pet"] .. ")|r", 1, 1, 1 })
                 end
             else
                 if (wide_style) then
@@ -980,7 +975,8 @@ local function onTooltipSetUnit(tooltip)
                         { (L["Honor Rank"] or "Honor Rank") .. ":", pvpName, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g,
                             NORMAL_FONT_COLOR.b, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b })
                 else
-                    tinsert(linesToAdd, { string.format("%s: |cFFFFFFFF%s|r", L["Honor Rank"] or "Honor Rank", pvpName), 1, 1, 1 })
+                    tinsert(linesToAdd,
+                        { string.format("%s: |cFFFFFFFF%s|r", L["Honor Rank"] or "Honor Rank", pvpName), 1, 1, 1 })
                 end
             end
         end
@@ -1126,14 +1122,19 @@ local function onTooltipSetUnit(tooltip)
                         tinsert(linesToAdd,
                             { "GearScore: " .. gearscore .. gsDelta, "(iLvl: " .. avg_ilvl .. ")", r, g, b, r, g, b })
                     elseif (mini_style) then
-                        miniText = string.format("|cFF%02x%02x%02xGS: %s%s  L: %s|r  ", r * 255, g * 255, b * 255, gearscore, gsDelta, avg_ilvl)
+                        miniText = string.format("|cFF%02x%02x%02xGS: %s%s  L: %s|r  ", r * 255, g * 255, b * 255,
+                            gearscore, gsDelta, avg_ilvl)
                     else
-                        tinsert(linesToAdd, { string.format("GearScore: |cFF%02x%02x%02x%s|r%s", r * 255, g * 255, b * 255, gearscore, gsDelta), 1, 1, 1 })
+                        tinsert(linesToAdd,
+                            { string.format("GearScore: |cFF%02x%02x%02x%s|r%s", r * 255, g * 255, b * 255, gearscore,
+                                gsDelta), 1, 1, 1 })
                         if (avg_ilvl and avg_ilvl > 0) then
                             if (TacoTipConfig.show_ilvl_inline) then
-                                text[1] = text[1] .. string.format(" |cFF%02x%02x%02x[%s]|r", r * 255, g * 255, b * 255, avg_ilvl)
+                                text[1] = text[1] ..
+                                string.format(" |cFF%02x%02x%02x[%s]|r", r * 255, g * 255, b * 255, avg_ilvl)
                             else
-                                tinsert(linesToAdd, { string.format("iLvl: |cFF%02x%02x%02x%s|r", r * 255, g * 255, b * 255, avg_ilvl), 1, 1, 1 })
+                                tinsert(linesToAdd,
+                                    { string.format("iLvl: |cFF%02x%02x%02x%s|r", r * 255, g * 255, b * 255, avg_ilvl), 1, 1, 1 })
                             end
                         end
                     end
