@@ -141,48 +141,89 @@ local function RegisterTacoTipTests()
         end
         cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = savedUse, savedR, savedG, savedB
     end
-    function Borders:NoBleedToNonUnitTooltip()
+    -- Classic-Era bleed-through: a player tooltip (class border applied) must
+    -- NOT leave its class tint on any subsequent non-unit transition. This is
+    -- the SoD/Classic-Era reproduction of the reported minimap/world-map bug,
+    -- covering the same paths as the previously-separate NoBleed tests:
+    --   (a) player -> Clear()            -> non-unit
+    --   (b) player -> SetHyperlink(item) -> item
+    --   (c) player -> SetSpell()         -> spell
+    -- Per AGENTS.md "Non-Unit Visual Isolation", items, spells, and cleared
+    -- tooltips must never inherit stale unit state.
+    function Borders:ClassicEraBleedThrough()
         local cfg = _G.TacoTipConfig
-        local savedUse = cfg.tooltip_border_use_class
+        local savedUse, savedR, savedG, savedB = cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b
         cfg.tooltip_border_use_class = true
-        -- Paint a player tooltip (class border applied) via SetUnit so the
-        -- tooltip is shown — Clear() below only fires OnTooltipCleared when
-        -- the frame is visible on some Classic client versions.
-        pc(GameTooltip.SetUnit, GameTooltip, "player")
-        -- Recycle the tooltip: Clear() fires OnTooltipCleared ->
+        -- Pin the base (non-class) border colour to white so the post-reset
+        -- assertions are deterministic. resetTooltipBorderToDefault writes
+        -- exactly these configured values (main.lua:493), so the test must pin
+        -- them -- otherwise AreEqual(r,1) checks an unknown base colour.
+        cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = 1, 1, 1
+        local _, testClass = UnitClass("player")
+
+        -- Paint the player tooltip with the class border via the SAME direct
+        -- path PlayerGetsClassBorder uses (TT.ApplyTooltipAppearance). This makes
+        -- the bleed source real and harness-independent of whether SetUnit fires
+        -- the OnTooltipSetUnit hook. We assert the border is actually class-tinted
+        -- (not the white base) BEFORE each transition, so the subsequent "reset to
+        -- base" assertion can only pass if the reset path actually cleared it.
+        local function paintPlayer()
+            local ok = pc(TT.ApplyTooltipAppearance, TT, GameTooltip, "player")
+            IsTrue(ok, "ApplyTooltipAppearance(player) did not error")
+            local bf = GameTooltip.TacoTipBackdropFrame
+            if (bf and bf.GetBackdropBorderColor and testClass) then
+                local r, g, b = bf:GetBackdropBorderColor()
+                IsTrue(not (r == 1 and g == 1 and b == 1),
+                    string.format("player border tinted before transition (%.2f,%.2f,%.2f)", r or -1, g or -1, b or -1))
+            end
+            return bf
+        end
+
+        -- (a) Recycle the tooltip: Clear() fires OnTooltipCleared ->
         -- clearTooltipVisuals -> resetTooltipBorderToDefault.
+        paintPlayer()
         pc(GameTooltip.Clear, GameTooltip)
         local bf = GameTooltip.TacoTipBackdropFrame
         if (bf and bf.GetBackdropBorderColor) then
             local r, g, b = bf:GetBackdropBorderColor()
-            AreEqual(r, 1, "border red reset to base after clear")
-            AreEqual(g, 1, "border green reset to base after clear")
-            AreEqual(b, 1, "border blue reset to base after clear")
+            AreEqual(r, 1, "border red reset to base after clear (no bleed)")
+            AreEqual(g, 1, "border green reset to base after clear (no bleed)")
+            AreEqual(b, 1, "border blue reset to base after clear (no bleed)")
         else
-            IsTrue(false, "backdrop frame missing for reset assertion")
+            IsTrue(false, "backdrop frame missing for clear-reset assertion")
         end
-        cfg.tooltip_border_use_class = savedUse
-    end
-    function Borders:NoBleedToItemTooltip()
-        local cfg = _G.TacoTipConfig
-        local savedUse = cfg.tooltip_border_use_class
-        cfg.tooltip_border_use_class = true
-        -- Paint a player tooltip first (class border applied) via SetUnit,
-        -- ensuring the tooltip is shown so item transitions fire the full
-        -- hook chain (OnTooltipCleared → clearTooltipVisuals).
-        pc(GameTooltip.SetUnit, GameTooltip, "player")
-        -- Item tooltips route through itemToolTipHook -> applyTooltipBorderOverlay(base).
-        -- Use a real item link so the OnTooltipSetItem hook fires.
+
+        -- (b) Item tooltips route through itemToolTipHook ->
+        -- applyTooltipBorderOverlay(base). Re-paint player first so the class
+        -- border is applied, then transition to an item link.
+        paintPlayer()
         local link = select(2, pc(GetItemInfo, 19019)) or "item:19019:0:0:0:0:0:0"
         pcall(GameTooltip.SetHyperlink, GameTooltip, link)
-        local bf = GameTooltip.TacoTipBackdropFrame
+        bf = GameTooltip.TacoTipBackdropFrame
         if (bf and bf.GetBackdropBorderColor) then
             local r, g, b = bf:GetBackdropBorderColor()
             AreEqual(r, 1, "item border red is base (no class bleed)")
             AreEqual(g, 1, "item border green is base (no class bleed)")
             AreEqual(b, 1, "item border blue is base (no class bleed)")
+        else
+            IsTrue(false, "backdrop frame missing for item-reset assertion")
         end
-        cfg.tooltip_border_use_class = savedUse
+
+        -- (c) Spell tooltips must also reset the class border. Re-paint player
+        -- first, then transition to a spell (Arcane Intellect, 1459).
+        paintPlayer()
+        pcall(GameTooltip.SetSpell, GameTooltip, 1459)
+        bf = GameTooltip.TacoTipBackdropFrame
+        if (bf and bf.GetBackdropBorderColor) then
+            local r, g, b = bf:GetBackdropBorderColor()
+            AreEqual(r, 1, "spell border red is base (no class bleed)")
+            AreEqual(g, 1, "spell border green is base (no class bleed)")
+            AreEqual(b, 1, "spell border blue is base (no class bleed)")
+        else
+            IsTrue(false, "backdrop frame missing for spell-reset assertion")
+        end
+
+        cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = savedUse, savedR, savedG, savedB
     end
 
     -- ============================================================
@@ -353,6 +394,25 @@ local function RegisterTacoTipTests()
             local ok = pc(CI.GetSpecializationName, CI, "WARRIOR", 1, true)
             IsTrue(ok, "CI:GetSpecializationName safe")
         end
+    end
+    function Stats:DualSpecGroup2Reachable()
+        -- Regression for SoD dual-spec (prism-full audit F1/F2/F3): the
+        -- vendored LibClassicInspector must NOT hard-block talent group 2 on
+        -- non-WotLK clients. Group-2 reads must be callable without error and
+        -- the active-group resolver must report a valid group (1-2).
+        local CI = LibStub and LibStub("LibClassicInspector", true)
+        Exists(CI, "LibClassicInspector loaded")
+        if (not CI) then return end
+        -- Group 2 calls must not raise (previously `if not isWotlk and group==2
+        -- then return nil` — still nil on single-spec clients, but reachable).
+        local okSpec = pc(CI.GetSpecialization, CI, "player", 2)
+        IsTrue(okSpec, "CI:GetSpecialization(player, 2) does not error")
+        local okPts = pc(CI.GetTalentPoints, CI, "player", 2)
+        IsTrue(okPts, "CI:GetTalentPoints(player, 2) does not error")
+        local okActive = pc(CI.GetActiveTalentGroup, CI, "player")
+        IsTrue(okActive, "CI:GetActiveTalentGroup(player) does not error")
+        local active = select(2, okActive and pcall(CI.GetActiveTalentGroup, CI, "player")) or 1
+        IsTrue(active == 1 or active == 2, "active talent group is valid (1-2): " .. tostring(active))
     end
 
     -- ============================================================

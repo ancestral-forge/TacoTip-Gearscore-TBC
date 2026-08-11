@@ -10,6 +10,7 @@ read_globals = {
     "C_Map",
     "C_NamePlate",
     "C_PlayerInfo",
+    "C_SpecializationInfo",
     "C_Timer",
     "CANCEL",
     "CanInspect",
@@ -54,6 +55,7 @@ read_globals = {
     "GetMouseFoci",
     "GetMouseFocus",
     "GetNumGuildMembers",
+    "GetNumTalentGroups",
     "GetNumTalents",
     "GetNumTalentsByClass",
     "GetPlayerInfoByGUID",
@@ -207,4 +209,13 @@ files["Locale/*.lua"] = {
     globals = {
         "TACOTIP_LOCALE",
     },
+}
+
+files["Libs/LibClassicInspector/LibClassicInspector.lua"] = {
+    read_globals = {
+        "C_SpecializationInfo",
+        "GetActiveTalentGroup",
+        "GetNumTalentGroups",
+    },
+    globals = {},
 }

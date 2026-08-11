@@ -71,6 +71,38 @@ local GetTalentInfo = _G.GetTalentInfo
 local isWotlk = clientBuildMajor == 3
 local isTBC = clientBuildMajor == 2
 local isClassic = clientBuildMajor == 1
+-- SoD (Classic Era 1.15.x) exposes dual-spec via C_SpecializationInfo, unlike
+-- original Vanilla/TBC which are single-spec. Any client reporting >1 spec
+-- group is treated as dual-spec capable so group 2 talent reads are allowed.
+local hasDualSpec
+do
+    if (isWotlk) then
+        hasDualSpec = true
+    else
+        local n = 1
+        if (GetNumTalentGroups) then
+            n = GetNumTalentGroups() or 1
+        elseif (C_SpecializationInfo and C_SpecializationInfo.GetNumSpecGroups) then
+            n = C_SpecializationInfo.GetNumSpecGroups(false) or 1
+        end
+        hasDualSpec = (n > 1)
+    end
+end
+
+-- Returns the active talent group (1-2) for the player, or for the unit
+-- currently being inspected when isInspect is true. Uses the modern
+-- C_SpecializationInfo API which is present on every supported client
+-- (Classic/SoD, TBC, Wrath); falls back to the legacy global on WotLK.
+local function GetActiveSpecGroupFor(isInspect)
+    if (C_SpecializationInfo and C_SpecializationInfo.GetActiveSpecGroup) then
+        local g = C_SpecializationInfo.GetActiveSpecGroup(isInspect and true or false)
+        if (g and g > 0) then return g end
+    end
+    if (isWotlk and GetActiveTalentGroup) then
+        return GetActiveTalentGroup(isInspect and true or false, nil)
+    end
+    return 1
+end
 
 local playerClass = select(2, UnitClass("player"))
 
@@ -2891,10 +2923,10 @@ local function cacheUserTalents(unit)
         [1] = { [1] = {}, [2] = {}, [3] = {} },
         [2] = { [1] = {}, [2] = {}, [3] = {} },
         ["time"] = time(),
-        ["active"] = isWotlk and GetActiveTalentGroup(true, unit) or 1,
+        ["active"] = GetActiveSpecGroupFor(true),
         ["inspect"] = true
     }
-    for x = 1, (isWotlk and 2 or 1) do
+    for x = 1, (hasDualSpec and 2 or 1) do
         for i = 1, 3 do -- GetNumTalentTabs
             if (isWotlk) then
                 for j = 1, GetNumTalents(i, true, false, x) do
@@ -2903,7 +2935,7 @@ local function cacheUserTalents(unit)
                 end
             else
                 for j = 1, GetNumTalents(i, true, false) do
-                    local _, _, _, _, rank = GetTalentInfo(i, j, true, false)
+                    local _, _, _, _, rank = GetTalentInfo(i, j, true, false, x)
                     talents[x][i][j] = rank
                 end
             end
@@ -3001,7 +3033,7 @@ function f:INSPECT_READY(event, guid)
     if (not unit or UnitIsUnit(unit, "player")) then
         return
     end
-    if (not isClassic) then
+    if (not isClassic or hasDualSpec) then
         cacheUserTalents(unit)
     end
     cacheUserInventory(unit)
@@ -3039,7 +3071,7 @@ function f:CHAT_MSG_ADDON(event, prefix, text, channelType, senderFullName, send
         }
         local s = strsub(text, 5)
         local y = 0
-        for x = 1, (isWotlk and 2 or 1) do
+        for x = 1, (hasDualSpec and 2 or 1) do
             for i = 1, 3 do -- GetNumTalentTabs
                 for j = 1, lib:GetNumTalentsByClass(class, i) do
                     y = y + 1
@@ -3158,8 +3190,8 @@ RegisterAddonMessagePrefix(C_PREFIX)
 local function sendInfo()
     if (IsInGroup() or IsInGuild()) then
         local s = "02-"
-        s = s .. (isWotlk and GetActiveTalentGroup(false, false) or 1)
-        for x = 1, (isWotlk and 2 or 1) do
+        s = s .. GetActiveSpecGroupFor(false)
+        for x = 1, (hasDualSpec and 2 or 1) do
             for i = 1, 3 do -- GetNumTalentTabs
                 for j = 1, GetNumTalents(i, false, false) do
                     s = s .. select(5, GetTalentInfo(i, j, false, false, x))
@@ -3490,7 +3522,7 @@ function lib:GetSpecialization(unitorguid, _group)
     end
     local group = tonumber(_group) or 0
     assert(group == 1 or group == 2, "group is not a valid number (1-2)")
-    if (not isWotlk and group == 2) then
+    if (not hasDualSpec and group == 2) then
         return nil, 0
     end
     local mostPoints = 0
@@ -3549,7 +3581,7 @@ function lib:GetTalentPoints(unitorguid, _group)
     end
     local group = tonumber(_group) or 0
     assert(group == 1 or group == 2, "group is not a valid number (1-2)")
-    if (not isWotlk and group == 2) then
+    if (not hasDualSpec and group == 2) then
         return nil
     end
     local talents = { 0, 0, 0 }
@@ -3589,7 +3621,7 @@ function lib:GetActiveTalentGroup(unitorguid)
         return nil
     end
     if (guid == UnitGUID("player")) then
-        return isWotlk and GetActiveTalentGroup(false, false) or 1
+        return GetActiveSpecGroupFor(false)
     else
         local user = getCacheUser2(guid)
         if (user and user.talents["active"] > 0) then
@@ -3637,7 +3669,7 @@ function lib:GetTalentInfo(unitorguid, tabIndex, talentIndex, _group)
     local group = tonumber(_group) or 0
     assert(group == 1 or group == 2, "group is not a valid number (1-2)")
     local _, class = GetPlayerInfoByGUID(guid)
-    if (not class or (not isWotlk and group == 2)) then
+    if (not class or (not hasDualSpec and group == 2)) then
         return nil
     end
     if (guid == UnitGUID("player")) then
@@ -3832,7 +3864,7 @@ function lib:GetTalentRanksTable(unitorguid)
     end
     if (guid == UnitGUID("player")) then
         local talents = { [1] = { [1] = {}, [2] = {}, [3] = {} }, [2] = { [1] = {}, [2] = {}, [3] = {} } }
-        for x = 1, (isWotlk and 2 or 1) do
+        for x = 1, (hasDualSpec and 2 or 1) do
             for i = 1, 3 do -- GetNumTalentTabs
                 for j = 1, GetNumTalents(i, false, false) do
                     talents[x][i][j] = select(5, GetTalentInfo(i, j, false, false, x))
@@ -3844,7 +3876,7 @@ function lib:GetTalentRanksTable(unitorguid)
         local user = getCacheUser2(guid)
         if (user and user.talents.time ~= 0) then
             local talents = { [1] = { [1] = {}, [2] = {}, [3] = {} }, [2] = { [1] = {}, [2] = {}, [3] = {} } }
-            for x = 1, (isWotlk and 2 or 1) do
+            for x = 1, (hasDualSpec and 2 or 1) do
                 for i = 1, 3 do -- GetNumTalentTabs
                     for k, v in ipairs(user.talents[x][i]) do
                         talents[x][i][k] = v
