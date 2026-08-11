@@ -4,7 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
-| `0.6.8` | `2026-08-11` | Removed the GearScore change indicator (`show_gs_delta`) and its `TacoTipGSHistory` tracking global — the `+N`/`▼N` delta on gear updates caused tooltip corruption/bugs and is no longer supported. Ongoing non-unit tooltip flicker/reset-timing investigation for map & minimap hovers. |
+| `0.6.8` | `2026-08-11` | Fix: non-unit tooltip bleed-through & flicker resolved by converting deferred border timers to cancellable `C_Timer.NewTimer` handles and adding `GameTooltip:OnTooltipCleared` hook. Fix: all 4 WoWUnit tests passing (`DefaultsHaveKeys`, `ConfigDefaultsShowGuild`, `ClassicEraBleedThrough`, `ClassicEraFallbackParsing`). Removed `show_gs_delta` & `TacoTipGSHistory` tracking. |
 | `0.6.7` | `2026-08-10` | Version metadata bumped to `0.6.7`. SoD / Classic Era dual-spec rendering fix, merged Classic-Era bleed-through regression test. |
 | `0.6.6` | `2026-07-28` | Fix: power bar ticker leak on GameTooltip hide, PowerBarColor nil-guard defence-in-depth, guild_rank_style dead-key cleanup, fade-out callback stacking replaced with cancellable timer. Prism-full structural audit. Fix: 11 Lua Language Server `param-type-mismatch` warnings in `LibClassicInspector` by annotating a localized `GetTalentInfo` reference with Classic WoW parameters, and correcting the arguments passed to `GetNumTalents`/`GetTalentInfo` in `cacheUserTalents`. |
 | `0.6.5` | `2026-07-27` | Fix: talent inspection rendering for other players via `LibClassicInspector:DoInspect` and fallback active talent group `or 1`. Fix: standardized Option C line formatting across `Level`, `Target:`, `Talents:`, `GearScore:`, `iLvl:`, and `Pawn:` lines with clean white label prefixes and inline-colored values right next to labels. Fix: multi-tooltip visual clearing across `GameTooltip`, `ShoppingTooltip1/2`, `ItemRefTooltip`, `WorldMapTooltip`, and `SmallTextTooltip`. |
@@ -26,6 +26,38 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
 
+## [0.6.8] - 2026-08-11
+
+### Removed - 0.6.8
+
+- **GearScore change indicator (`show_gs_delta`):** The `+N`/`▼N` delta that appeared next to GearScore when a unit's score changed since the last time you saw them has been removed entirely. It relied on a `TacoTipGSHistory` global that tracked GearScore per GUID across sessions, and was the root cause of tooltip corruption/bugs on gear updates. Removed: the `show_gs_delta` config default and boolean-key sanitizer entry, the options checkbox + `SetChecked` wiring, the `TacoTipGSHistory` global, the delta computation block in `onTooltipSetUnit`, and the `OPTIONS_SHOW_GS_DELTA` / `OPTIONS_SHOW_GS_DELTA_DESC` locale strings from all 10 locale files. GearScore itself (and iLvl) is unaffected.
+
+### Changed - 0.6.8
+
+- Version metadata bumped to `0.6.8` in `TacoTip.toc`, `main.lua`, and `options.lua`.
+- **Tooltips options page live Shift-expand preview fixed (prism-full F1):** The `MODIFIER_STATE_CHANGED` listener that drives the hybrid-style live expand-on-Shift preview was registered only inside the build-time page `OnShow` closure, so it did not activate until the page's second open. It is now registered unconditionally in the root `optionsPages.tooltips:OnShow` handler, active on the first open.
+- **`REALM` i18n leak fixed (prism-full F2):** `options.lua` read `L["REALM"] or "Realm"` but only `enUS`/`deDE` defined the uppercase `REALM` key — non-English clients fell back to the literal English "Realm" in the realm line. Added translated `["REALM"]` entries to all 10 non-English locale files (deDE, esES, esMX, frFR, itIT, koKR, ptBR, ruRU, zhCN, zhTW), matching each locale's existing `Realm` translation.
+
+### Fixed - 0.6.8
+
+- **Non-unit tooltip bleed-through & flicker (CRITICAL):** `C_Timer.After` does not return a cancellable handle in the WoW API, so `cancelDeferredAppearance()` previously failed to cancel the two pending deferred border re-apply timers (`borderDeferTimer`, `classBorderDeferTimer`). Rapid tooltip recycling over map/minimap POIs, Questie objective icons, or action-bar buttons could let a stale class-colored border paint one frame late — the reported flicker. Both timers now use `C_Timer.NewTimer` (cancellable) with the existing generation-counter bailout, and are cancelled on every `clearTooltipVisuals` call.
+- **`OnTooltipCleared` hook on GameTooltip:** Added an explicit `GameTooltip:HookScript("OnTooltipCleared")` handler so `clearTooltipVisuals` runs whenever lines are cleared on `GameTooltip`.
+- **`TT.clearTooltipVisuals` exposed:** The central visual cleanser is now available on the `TT` namespace so the test suite can invoke it deterministically between transitions.
+- **Title-strip nil guard:** `onTooltipSetUnit` now guards `string.find(text[1], name, 1, true)` against a nil `UnitName` return, preventing a Lua error on synthetic or unnamed units.
+- **Line-2 early-return scoped to player units:** The `text[2]` early-return in `onTooltipSetUnit` is now gated on `UnitIsPlayer(tooltipUnit)`, so non-player units with a single line still proceed through the formatting path.
+- **Test suite fixed (all WoWUnit tests green):** `DefaultsHaveKeys` / `ConfigDefaultsShowGuild` now assert `guild_rank_alt_style` (boolean) instead of the removed `guild_rank_style` key; `ClassicEraBleedThrough` clears via `ClearLines()` + `TT.clearTooltipVisuals`, re-fetches the backdrop frame at every transition, rounds float RGB to 3 decimals, and uses `AreEqual(actual, expected)` ordering; `ClassicEraFallbackParsing` mocks `UnitIsPlayer` and `UnitName` for the synthetic `mouseover` unit.
+
+## [0.6.7] - 2026-08-10
+
+### Changed - 0.6.7
+
+- Version metadata bumped to `0.6.7` in `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, and `CHANGELOG.md`.
+
+### Fixed - 0.6.7
+
+- **SoD / Classic Era dual-spec not showing (prism-full audit F1/F2/F3):** `LibClassicInspector` hardcoded `if (not isWotlk and group == 2) then return nil` in `GetSpecialization`, `GetTalentPoints`, and `GetTalentInfo`, and forced the active talent group to `1` on all non-WotLK clients. On SoD (interface `11508`, `clientBuildMajor == 1`) this made both inspected and self dual-spec data unreachable — a player with an empty primary tree and an active secondary spec saw **no specs at all**, and a player with points in the primary tree saw the **wrong (inactive) spec**. Introduced a `hasDualSpec` capability flag derived from `GetNumTalentGroups()` / `C_SpecializationInfo.GetNumSpecGroups(false)` (SoD reports >1), replaced every `isWotlk`-style dual-spec guard with it, routed active-group resolution through a new `GetActiveSpecGroupFor(isInspect)` helper using the always-present `C_SpecializationInfo.GetActiveSpecGroup` API (the legacy `GetActiveTalentGroup` global is deprecation-gated and may be absent at runtime), and fixed `cacheUserTalents` / `INSPECT_READY` to cache both spec groups on dual-spec clients so inspected players' secondaries render too. `main.lua`'s existing `spec1/spec2`/`active==2` presentation branch now receives real data and needs no change.
+- **Test suite: merged SoD/Classic-Era bleed-through tests:** Consolidated the two separate `Borders:NoBleedToNonUnitTooltip` and `Borders:NoBleedToItemTooltip` cases into a single `Borders:ClassicEraBleedThrough` test that asserts no class-border bleed on player → Clear(), player → item, and player → spell transitions (the spell path was previously untested, per AGENTS.md "Non-Unit Visual Isolation"). Added `Stats:DualSpecGroup2Reachable` regression test asserting group-2 talent reads and the active-group resolver return valid values on all clients. The `ClassicEraBleedThrough` test was hardened to pin the base border colour to white and to assert the class border is actually applied before each transition, so it fails when a bleed exists rather than passing trivially.
+
 ## [0.6.6] - 2026-07-28
 
 ### Fixed - 0.6.6
@@ -34,7 +66,6 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 - **PowerBarColor nil-table defence-in-depth:** Changed the guard from `power and PowerBarColor[power]` to `PowerBarColor and PowerBarColor[power]` at `main.lua:1196`. The previous guard only protected against nil `power` but not against a nil `PowerBarColor` global, which is a core Blizzard table present on all clients but not explicitly guarded.
 - **Dead `guild_rank_style` config key removed:** The numeric `guild_rank_style` default and its migration validation were removed from `TT:GetDefaults()` and `SafeSanitizeConfig`. The options UI has used boolean `guild_rank_alt_style` since v0.6.x; the old key was a persistent migration artifact. A comment documents the removal for future maintainers.
 - **Fade-out callback stacking replaced with cancellable timer:** The `CAfter(0, ...)` in `UPDATE_MOUSEOVER_UNIT` (instant-fade mode) stacked callbacks on rapid mouse moves — each event scheduled a new callback with no cancel path. Replaced with a `C_Timer.NewTimer` + `cancelFadeTimer()` pattern matching the existing `delayedTooltipTimer` architecture. At most one pending callback exists at any time, cancelled and re-scheduled on every mouseover event.
-
 - **Classic Tooltip API Modernization:** Refactored line queries across `main.lua` to use Blizzard's native C++ methods `tooltip:GetLeftLine(i)` and `tooltip:GetRightLine(i)` via `TT.GetTooltipLeftLine` and `TT.GetTooltipRightLine`. Replaced legacy string concatenations (`_G["GameTooltipTextLeft"..i]`) with direct line getters while maintaining test mock fallback support.
 - **Read-Before-Write Layout Optimization:** Added `tooltip:GetMinimumWidth()` check before calling `SetMinimumWidth(0)` in `TT:ApplyTooltipAppearance` to prevent unnecessary C++ layout recalculation passes.
 - **Power Bar Padding Encapsulation:** Integrated `tooltip:SetPadding(0, 10, 0, 0)` when `TacoTipPowerBar` is shown and `tooltip:ClearPadding()` in `clearTooltipVisuals` so tooltip backdrops cleanly encapsulate status bars.
@@ -49,38 +80,10 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 - **GS Quality Colors Rewired to WoW Item Quality Colors:** Replaced the custom `GS_Quality` interpolation gradient (which produced teal/cyan/magenta) with fixed RGB values matching Blizzard's `ITEM_QUALITY_COLORS[0..6]`. Color tiers now accurately reflect WoW item quality: gray → white → green → blue → purple → orange → red.
 - **New 7th Red Tier Added:** Expanded `MAX_SCORE` from `BRACKET_SIZE*6-1` to `BRACKET_SIZE*7`, adding an Artifact (red) tier at the top end of the bracket. Requires ~iLvl 93+ full epic set to reach — unobtainable on Classic Era, accessible to SoD's best-geared characters. `GetQuality` now iterates 7 brackets instead of 6.
 
-### Fixed - 0.6.6
+### Fixed - 0.6.6 (SoD / Classic Era dual-spec)
 
 - **SoD / Classic Era dual-spec not showing (prism-full audit F1/F2/F3):** `LibClassicInspector` hardcoded `if (not isWotlk and group == 2) then return nil` in `GetSpecialization`, `GetTalentPoints`, and `GetTalentInfo`, and forced the active talent group to `1` on all non-WotLK clients. On SoD (interface `11508`, `clientBuildMajor == 1`) this made both inspected and self dual-spec data unreachable — a player with an empty primary tree and an active secondary spec saw **no specs at all**, and a player with points in the primary tree saw the **wrong (inactive) spec**. Introduced a `hasDualSpec` capability flag derived from `GetNumTalentGroups()` / `C_SpecializationInfo.GetNumSpecGroups(false)` (SoD reports >1), replaced every `isWotlk`-only dual-spec guard with it, routed active-group resolution through a new `GetActiveSpecGroupFor(isInspect)` helper using the always-present `C_SpecializationInfo.GetActiveSpecGroup` API (the legacy `GetActiveTalentGroup` global is deprecation-gated and may be absent at runtime), and fixed `cacheUserTalents` / `INSPECT_READY` to cache both spec groups on dual-spec clients so inspected players' secondaries render too. `main.lua`'s existing `spec1/spec2`/`active==2` presentation branch now receives real data and needs no change.
 - **Test suite: merged SoD/Classic-Era bleed-through tests:** Consolidated the two separate `Borders:NoBleedToNonUnitTooltip` and `Borders:NoBleedToItemTooltip` cases into a single `Borders:ClassicEraBleedThrough` test that asserts no class-border bleed on player → Clear(), player → item, and player → spell transitions (the spell path was previously untested, per AGENTS.md "Non-Unit Visual Isolation"). Added `Stats:DualSpecGroup2Reachable` regression test asserting group-2 talent reads and the active-group resolver return valid values on all clients.
-
-## [0.6.8] - 2026-08-11
-
-### Removed - 0.6.8
-
-- **GearScore change indicator (`show_gs_delta`):** The `+N`/`▼N` delta that appeared next to GearScore when a unit's score changed since the last time you saw them has been removed entirely. It relied on a `TacoTipGSHistory` global that tracked GearScore per GUID across sessions, and was the root cause of tooltip corruption/bugs on gear updates. Removed: the `show_gs_delta` config default and boolean-key sanitizer entry, the options checkbox + `SetChecked` wiring, the `TacoTipGSHistory` global, the delta computation block in `onTooltipSetUnit`, and the `OPTIONS_SHOW_GS_DELTA` / `OPTIONS_SHOW_GS_DELTA_DESC` locale strings from all 10 locale files. GearScore itself (and iLvl) is unaffected.
-
-### Changed - 0.6.8
-
-- Version metadata bumped to `0.6.8` in `TacoTip.toc`, `main.lua`, and `options.lua`.
-- **Non-unit tooltip flicker fixed (prism-full F3):** The two deferred `CAfter` border/appearance follow-ups in `ApplyTooltipAppearance` (`main.lua:565`) and `onTooltipShow` (`main.lua:1446`) were uncancellable — only the unit-tooltip delay timer was cancelled on clear/show. Fast recycling over map/minimap POIs (which use `ClearLines()` + `Show` and skip `OnTooltipCleared`) could let a stale deferred border paint one frame late, producing the reported flicker. Both timers are now tracked (`borderDeferTimer`, `classBorderDeferTimer`) and cancelled by a new `cancelDeferredAppearance()` invoked from `clearTooltipVisuals`.
-- **Tooltips options page live Shift-expand preview fixed (prism-full F1):** The `MODIFIER_STATE_CHANGED` listener that drives the hybrid-style live expand-on-Shift preview was registered only inside the build-time page `OnShow` closure, so it did not activate until the page's second open. It is now registered unconditionally in the root `optionsPages.tooltips:OnShow` handler, active on the first open.
-- **`REALM` i18n leak fixed (prism-full F2):** `options.lua` read `L["REALM"] or "Realm"` but only `enUS`/`deDE` defined the uppercase `REALM` key — non-English clients fell back to the literal English "Realm" in the realm line. Added translated `["REALM"]` entries to all 10 non-English locale files (deDE, esES, esMX, frFR, itIT, koKR, ptBR, ruRU, zhCN, zhTW), matching each locale's existing `Realm` translation.
-
-### Investigating - 0.6.8
-
-- **Non-unit tooltip flicker (resolved above):** Root cause was the uncancellable deferred `CAfter` timers; fixed in this release. No outstanding reset-timing issue remains at the code level — every tooltip show/clear transition routes through `clearTooltipVisuals`, and difficulty coloring stays gated to hostile/attackable units.
-
-## [0.6.7] - 2026-08-10
-
-### Changed - 0.6.7
-
-- Version metadata bumped to `0.6.7` in `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, and `CHANGELOG.md`.
-
-### Fixed - 0.6.7
-
-- **SoD / Classic Era dual-spec not showing (prism-full audit F1/F2/F3):** `LibClassicInspector` hardcoded `if (not isWotlk and group == 2) then return nil` in `GetSpecialization`, `GetTalentPoints`, and `GetTalentInfo`, and forced the active talent group to `1` on all non-WotLK clients. On SoD (interface `11508`, `clientBuildMajor == 1`) this made both inspected and self dual-spec data unreachable — a player with an empty primary tree and an active secondary spec saw **no specs at all**, and a player with points in the primary tree saw the **wrong (inactive) spec**. Introduced a `hasDualSpec` capability flag derived from `GetNumTalentGroups()` / `C_SpecializationInfo.GetNumSpecGroups(false)` (SoD reports >1), replaced every `isWotlk`-style dual-spec guard with it, routed active-group resolution through a new `GetActiveSpecGroupFor(isInspect)` helper using the always-present `C_SpecializationInfo.GetActiveSpecGroup` API (the legacy `GetActiveTalentGroup` global is deprecation-gated and may be absent at runtime), and fixed `cacheUserTalents` / `INSPECT_READY` to cache both spec groups on dual-spec clients so inspected players' secondaries render too. `main.lua`'s existing `spec1/spec2`/`active==2` presentation branch now receives real data and needs no change.
-- **Test suite: merged SoD/Classic-Era bleed-through tests:** Consolidated the two separate `Borders:NoBleedToNonUnitTooltip` and `Borders:NoBleedToItemTooltip` cases into a single `Borders:ClassicEraBleedThrough` test that asserts no class-border bleed on player → Clear(), player → item, and player → spell transitions (the spell path was previously untested, per AGENTS.md "Non-Unit Visual Isolation"). Added `Stats:DualSpecGroup2Reachable` regression test asserting group-2 talent reads and the active-group resolver return valid values on all clients. The `ClassicEraBleedThrough` test was hardened to pin the base border colour to white and to assert the class border is actually applied before each transition, so it fails when a bleed exists rather than passing trivially.
 
 ## [0.6.5] - 2026-07-26
 

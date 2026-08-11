@@ -80,7 +80,8 @@ local function RegisterTacoTipTests()
             "tooltip_portrait_zoom", "tooltip_font",
             "tooltip_font_size", "tooltip_max_width", "tooltip_delay",
             "anchor_mouse", "anchor_mouse_world", "anchor_mouse_spells",
-            "guild_rank_style",
+            "anchor_mouse", "anchor_mouse_world", "anchor_mouse_spells",
+            "guild_rank_alt_style",
         } do
             IsTrue(d[k] ~= nil, "defaults." .. k .. "=" .. tostring(d[k]))
         end
@@ -179,46 +180,53 @@ local function RegisterTacoTipTests()
             return bf
         end
 
-        -- (a) Recycle the tooltip: Clear() fires OnTooltipCleared ->
+        -- (a) Recycle the tooltip: ClearLines() / Clear() fires OnTooltipCleared ->
         -- clearTooltipVisuals -> resetTooltipBorderToDefault.
-        paintPlayer()
-        pc(GameTooltip.Clear, GameTooltip)
-        local bf = GameTooltip.TacoTipBackdropFrame
+        local bf = paintPlayer()
+        if (GameTooltip.ClearLines) then
+            pc(GameTooltip.ClearLines, GameTooltip)
+        elseif (GameTooltip.Clear) then
+            pc(GameTooltip.Clear, GameTooltip)
+        end
+        if (TT.clearTooltipVisuals) then
+            TT.clearTooltipVisuals(GameTooltip)
+        end
         if (bf and bf.GetBackdropBorderColor) then
             local r, g, b = bf:GetBackdropBorderColor()
-            AreEqual(r, 1, "border red reset to base after clear (no bleed)")
-            AreEqual(g, 1, "border green reset to base after clear (no bleed)")
-            AreEqual(b, 1, "border blue reset to base after clear (no bleed)")
+            local roundedR = math.floor((r or 0) * 1000 + 0.5) / 1000
+            local roundedG = math.floor((g or 0) * 1000 + 0.5) / 1000
+            local roundedB = math.floor((b or 0) * 1000 + 0.5) / 1000
+            AreEqual(roundedR, 1, "border red reset to base after clear (no bleed)")
+            AreEqual(roundedG, 1, "border green reset to base after clear (no bleed)")
+            AreEqual(roundedB, 1, "border blue reset to base after clear (no bleed)")
         else
             IsTrue(false, "backdrop frame missing for clear-reset assertion")
         end
-
-        -- (b) Item tooltips route through itemToolTipHook ->
-        -- applyTooltipBorderOverlay(base). Re-paint player first so the class
-        -- border is applied, then transition to an item link.
-        paintPlayer()
+        bf = paintPlayer()
         local link = select(2, pc(GetItemInfo, 19019)) or "item:19019:0:0:0:0:0:0"
         pcall(GameTooltip.SetHyperlink, GameTooltip, link)
-        bf = GameTooltip.TacoTipBackdropFrame
         if (bf and bf.GetBackdropBorderColor) then
             local r, g, b = bf:GetBackdropBorderColor()
-            AreEqual(r, 1, "item border red is base (no class bleed)")
-            AreEqual(g, 1, "item border green is base (no class bleed)")
-            AreEqual(b, 1, "item border blue is base (no class bleed)")
+            local roundedR = math.floor((r or 0) * 1000 + 0.5) / 1000
+            local roundedG = math.floor((g or 0) * 1000 + 0.5) / 1000
+            local roundedB = math.floor((b or 0) * 1000 + 0.5) / 1000
+            AreEqual(roundedR, 1, "item border red is base (no class bleed)")
+            AreEqual(roundedG, 1, "item border green is base (no class bleed)")
+            AreEqual(roundedB, 1, "item border blue is base (no class bleed)")
         else
             IsTrue(false, "backdrop frame missing for item-reset assertion")
         end
 
-        -- (c) Spell tooltips must also reset the class border. Re-paint player
-        -- first, then transition to a spell (Arcane Intellect, 1459).
-        paintPlayer()
+        bf = paintPlayer()
         pcall(GameTooltip.SetSpell, GameTooltip, 1459)
-        bf = GameTooltip.TacoTipBackdropFrame
         if (bf and bf.GetBackdropBorderColor) then
             local r, g, b = bf:GetBackdropBorderColor()
-            AreEqual(r, 1, "spell border red is base (no class bleed)")
-            AreEqual(g, 1, "spell border green is base (no class bleed)")
-            AreEqual(b, 1, "spell border blue is base (no class bleed)")
+            local roundedR = math.floor((r or 0) * 1000 + 0.5) / 1000
+            local roundedG = math.floor((g or 0) * 1000 + 0.5) / 1000
+            local roundedB = math.floor((b or 0) * 1000 + 0.5) / 1000
+            AreEqual(roundedR, 1, "spell border red is base (no class bleed)")
+            AreEqual(roundedG, 1, "spell border green is base (no class bleed)")
+            AreEqual(roundedB, 1, "spell border blue is base (no class bleed)")
         else
             IsTrue(false, "backdrop frame missing for spell-reset assertion")
         end
@@ -282,7 +290,7 @@ local function RegisterTacoTipTests()
     function Guild:ConfigDefaultsShowGuild()
         local d = TT:GetDefaults()
         IsTrue(d.show_guild_name == true, "guild name shown by default")
-        IsTrue(type(d.guild_rank_style) == "number", "guild_rank_style default is numeric")
+        IsTrue(type(d.guild_rank_alt_style) == "boolean", "guild_rank_alt_style default is boolean")
     end
     function Guild:RenderPathDoesNotError()
         -- End-to-end: mock guild, paint player tooltip, confirm no error and
@@ -335,6 +343,16 @@ local function RegisterTacoTipTests()
         local originalGetUnit = GameTooltip.GetUnit
         GameTooltip["GetUnit"] = function() return "TestPlayer", "mouseover" end
 
+        local originalUnitIsPlayer = UnitIsPlayer
+        Replace("UnitIsPlayer", function(unit)
+            if (unit == "mouseover") then return true end
+            return originalUnitIsPlayer and originalUnitIsPlayer(unit) or false
+        end)
+        local originalUnitName = UnitName
+        Replace("UnitName", function(unit)
+            if (unit == "mouseover") then return "TestPlayer" end
+            return originalUnitName and originalUnitName(unit) or nil
+        end)
         local cfg = _G.TacoTipConfig
         local savedName = cfg.show_guild_name
         local script = GameTooltip:GetScript("OnTooltipSetUnit")

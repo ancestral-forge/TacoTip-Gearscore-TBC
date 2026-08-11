@@ -70,6 +70,7 @@ local GetClassAtlas = _G.GetClassAtlas
 local POWERBAR_UPDATE_RATE = 0.2
 
 local NewTicker = _G.C_Timer and _G.C_Timer.NewTicker
+local NewTimer = _G.C_Timer and _G.C_Timer.NewTimer
 local CAfter = _G.C_Timer and _G.C_Timer.After
 local GetBestMapForUnit = _G.C_Map and _G.C_Map.GetBestMapForUnit
 local GameTooltip_SetDefaultAnchor = _G.GameTooltip_SetDefaultAnchor
@@ -568,27 +569,45 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
     -- frame after OnTooltipSetUnit completes).
     if ((TacoTipConfig.tooltip_border_use_class or TacoTipConfig.color_class) and isPlayerTooltip) then
         local deferralGen = tooltip._borderDeferralGen or 0
-        borderDeferTimer = CAfter(0.05, function()
-            safeCall(function()
-                -- If the tooltip's border-deferral generation has changed since
-                -- we scheduled, the tooltip was recycled for different content
-                -- (e.g. map POI, item, another player) — do not re-apply.
-                if (tooltip._borderDeferralGen ~= deferralGen) then
-                    return
-                end
-                if (not tooltip or not tooltip:IsShown()) then
-                    return
-                end
-                local refreshed = tooltip.TacoTipPlayerClassColor
-                if (not refreshed) then
-                    return
-                end
-                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                    return
-                end
-                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+        if (NewTimer) then
+            borderDeferTimer = NewTimer(0.05, function()
+                safeCall(function()
+                    if (tooltip._borderDeferralGen ~= deferralGen) then
+                        return
+                    end
+                    if (not tooltip or not tooltip:IsShown()) then
+                        return
+                    end
+                    local refreshed = tooltip.TacoTipPlayerClassColor
+                    if (not refreshed) then
+                        return
+                    end
+                    if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                        return
+                    end
+                    applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+                end)
             end)
-        end)
+        else
+            CAfter(0.05, function()
+                safeCall(function()
+                    if (tooltip._borderDeferralGen ~= deferralGen) then
+                        return
+                    end
+                    if (not tooltip or not tooltip:IsShown()) then
+                        return
+                    end
+                    local refreshed = tooltip.TacoTipPlayerClassColor
+                    if (not refreshed) then
+                        return
+                    end
+                    if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                        return
+                    end
+                    applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+                end)
+            end)
+        end
     end
 
     applyTooltipFonts(tooltip)
@@ -743,6 +762,7 @@ local function clearTooltipVisuals(tooltip)
         tooltip._tacoTipPaddingSet = nil
     end
 end
+TT.clearTooltipVisuals = clearTooltipVisuals
 
 
 local function onTooltipSetUnit(tooltip)
@@ -788,7 +808,7 @@ local function onTooltipSetUnit(tooltip)
     end
 
     if (not text[1] or text[1] == "") then return end
-    if (not text[2] or text[2] == "") then return end
+    if (UnitIsPlayer(tooltipUnit) and (not text[2] or text[2] == "")) then return end
 
     -- Find the actual level line: players in guilds have the guild on line 2,
     -- so the level text shifts to line 3.
@@ -898,7 +918,7 @@ local function onTooltipSetUnit(tooltip)
         local localizedRace = UnitRace(tooltipUnit)
         local level = UnitLevel(tooltipUnit)
 
-        if (not TacoTipConfig.show_titles and string.find(text[1], name)) then
+        if (not TacoTipConfig.show_titles and name and string.find(text[1], name, 1, true)) then
             text[1] = name
         end
         if (TacoTipConfig.color_class and localizedClass and class) then
@@ -1448,25 +1468,45 @@ local function onTooltipShow(tooltip)
     end
 
     local deferralGen = tooltip._borderDeferralGen or 0
-    classBorderDeferTimer = CAfter(0, function()
-        safeCall(function()
-            -- If the tooltip was recycled since we scheduled, bail out.
-            if (tooltip._borderDeferralGen ~= deferralGen) then
-                return
-            end
-            if (not tooltip or not tooltip:IsShown()) then
-                return
-            end
-            local refreshed = tooltip.TacoTipPlayerClassColor
-            if (not refreshed) then
-                return
-            end
-            if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                return
-            end
-            applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+    if (NewTimer) then
+        classBorderDeferTimer = NewTimer(0, function()
+            safeCall(function()
+                if (tooltip._borderDeferralGen ~= deferralGen) then
+                    return
+                end
+                if (not tooltip or not tooltip:IsShown()) then
+                    return
+                end
+                local refreshed = tooltip.TacoTipPlayerClassColor
+                if (not refreshed) then
+                    return
+                end
+                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                    return
+                end
+                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+            end)
         end)
-    end)
+    else
+        classBorderDeferTimer = CAfter(0, function()
+            safeCall(function()
+                if (tooltip._borderDeferralGen ~= deferralGen) then
+                    return
+                end
+                if (not tooltip or not tooltip:IsShown()) then
+                    return
+                end
+                local refreshed = tooltip.TacoTipPlayerClassColor
+                if (not refreshed) then
+                    return
+                end
+                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                    return
+                end
+                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
+            end)
+        end)
+    end
 end
 
 local function registerTooltipVisualClearing(tooltipFrame)
@@ -1496,12 +1536,17 @@ for _, ttFrame in ipairs({ GameTooltip, ShoppingTooltip1, ShoppingTooltip2, Item
     registerTooltipVisualClearing(ttFrame)
 end
 
--- F3: Ensure portrait is hidden when the tooltip shows spell/buff content
--- (OnTooltipCleared is not guaranteed to fire before OnTooltipSetSpell in the
--- TBC Anniversary client, leaving a stale portrait visible).
+-- Ensure all visuals are cleared when the tooltip shows non-unit content
+-- like spells/buffs or custom non-unit lines.
 GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip, ...)
     return safeCall(clearTooltipVisuals, tooltip, ...)
 end)
+
+if (GameTooltip.HookScript) then
+    GameTooltip:HookScript("OnTooltipCleared", function(tooltip, ...)
+        return safeCall(clearTooltipVisuals, tooltip, ...)
+    end)
+end
 
 GameTooltip:HookScript("OnHide", function()
     cancelDelayedTooltip()
