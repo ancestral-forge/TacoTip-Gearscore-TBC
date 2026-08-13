@@ -434,6 +434,10 @@ TT.builtinTooltipBackgrounds = {
 -- ============================================================================
 TT.builtinTooltipBorders = {
 
+    { value = "Interface\\AddOns\\Details\\images\\border_1", text = "Details BarBorder 1" },
+    { value = "Interface\\AddOns\\Details\\images\\border_2", text = "Details BarBorder 2" },
+    { value = "Interface\\AddOns\\Details\\images\\border_3", text = "Details BarBorder 3" },
+
     { value = "Interface\\None", text = "Blizzard - None" },
 
     -- AchievementFrame

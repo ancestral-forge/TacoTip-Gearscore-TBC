@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.8"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.9"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -184,9 +184,14 @@ TT.GetClassIconMarkup = function(self, class)
     return getClassIconMarkup(class)
 end
 
+local SHAMAN_BLUE_COLOR = { r = 0.0, g = 0.44, b = 0.87, colorStr = "ff0070de" }
+
 local function getClassColor(class)
     if (not class) then
         return nil
+    end
+    if (class == "SHAMAN" and (not TacoTipConfig or TacoTipConfig.shaman_blue ~= false)) then
+        return SHAMAN_BLUE_COLOR
     end
     local color = CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[class]
     if (not color and RAID_CLASS_COLORS) then
@@ -194,6 +199,8 @@ local function getClassColor(class)
     end
     return color
 end
+
+TT.GetClassColor = getClassColor
 
 local function clearTooltipPlayerClassColor(tooltip)
     if (tooltip) then
@@ -447,7 +454,7 @@ local function applyTooltipBackdrop(tooltip)
         -- background — we only draw the colored border on top.
         backdrop:SetBackdrop({
             edgeFile = hasBorder and borderTexture or nil,
-            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 16) or 0,
+            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 20) or 0,
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
     else
@@ -457,7 +464,7 @@ local function applyTooltipBackdrop(tooltip)
             edgeFile = hasBorder and borderTexture or nil,
             tile = true,
             tileSize = 16,
-            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 16) or 0,
+            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 20) or 0,
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
     end
@@ -614,8 +621,8 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
 
     local portrait = ensureTooltipPortrait(tooltip)
     local portraitScale = TacoTipConfig.tooltip_portrait_scale or 1
-    local portraitW = math.floor(42 * portraitScale)
-    local portraitH = math.floor(56 * portraitScale)
+    local portraitW = math.floor(60 * portraitScale)
+    local portraitH = math.floor(80 * portraitScale)
     if (portrait) then
         if (TacoTipConfig.tooltip_portrait and unit) then
             portrait:ClearAllPoints()
@@ -2152,8 +2159,11 @@ function TacoTip_CustomPosEnable(show)
             return safeCall(function()
                 self:StartMoving()
                 self:SetScript("OnUpdate", function()
-                    if (not GameTooltip:IsShown() or not TacoTipConfig.custom_pos) then
+                    if (not GameTooltip or not GameTooltip:IsShown()) then
                         return
+                    end
+                    if (not TacoTipConfig.custom_pos) then
+                        TacoTipConfig.custom_pos = getDefaultTooltipMoverPosition()
                     end
                     local anchorPoint = TacoTipConfig.custom_anchor or "TOPLEFT"
                     GameTooltip:ClearAllPoints()
@@ -2204,7 +2214,11 @@ function TacoTip_CustomPosEnable(show)
             local anchorMouseWorldCheck = _G.TacoTipOptCheckBoxAnchorMouseWorld
             if (not TacoTipConfig.custom_pos) then
                 TacoTipConfig.custom_pos = getDefaultTooltipMoverPosition()
+                TacoTipConfig.custom_anchor = "TOPLEFT"
                 print("|cff59f0dcTacoTip:|r " .. L["Custom tooltip position enabled."])
+            end
+            if (not TacoTipConfig.custom_anchor) then
+                TacoTipConfig.custom_anchor = "TOPLEFT"
             end
             syncTooltipMoverPosition(false)
             if (customPositionCheck) then
@@ -2252,7 +2266,7 @@ function TacoTip_CustomPosEnable(show)
                 customPositionCheck:SetChecked(false)
             end
             if (moverButton) then
-                setButtonEnabled(moverButton, false)
+                setButtonEnabled(moverButton, true)
             end
             if (anchorMouseCheck) then
                 anchorMouseCheck:SetDisabled(false)

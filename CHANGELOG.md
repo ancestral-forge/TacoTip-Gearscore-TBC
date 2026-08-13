@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.6.9` | `2026-08-13` | Shaman Blue default toggle for Classic Era/SoD, Details BarBorder 3 default border with 18px edge size, custom scrollable media dropdown selector UI (Image 2 style), updated unit tests and localization. |
 | `0.6.8` | `2026-08-11` | Fix: non-unit tooltip bleed-through & flicker resolved by converting deferred border timers to cancellable `C_Timer.NewTimer` handles and adding `GameTooltip:OnTooltipCleared` hook. Fix: all 4 WoWUnit tests passing (`DefaultsHaveKeys`, `ConfigDefaultsShowGuild`, `ClassicEraBleedThrough`, `ClassicEraFallbackParsing`). Removed `show_gs_delta` & `TacoTipGSHistory` tracking. |
 | `0.6.7` | `2026-08-10` | Version metadata bumped to `0.6.7`. SoD / Classic Era dual-spec rendering fix, merged Classic-Era bleed-through regression test. |
 | `0.6.6` | `2026-07-28` | Fix: power bar ticker leak on GameTooltip hide, PowerBarColor nil-guard defence-in-depth, guild_rank_style dead-key cleanup, fade-out callback stacking replaced with cancellable timer. Prism-full structural audit. Fix: 11 Lua Language Server `param-type-mismatch` warnings in `LibClassicInspector` by annotating a localized `GetTalentInfo` reference with Classic WoW parameters, and correcting the arguments passed to `GetNumTalents`/`GetTalentInfo` in `cacheUserTalents`. |
@@ -25,6 +26,32 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.6.9] - 2026-08-13
+
+### Added - 0.6.9
+
+- **Shaman Blue default class color toggle on Classic Era / SoD:** Added `shaman_blue` setting (default `true`) so Shamans display in Blue (`#0070DE`) on Classic Era and Season of Discovery by default instead of Classic pink (`#F58CBA`). A "Shaman Blue" checkbox toggle is available on the Tooltips options page to switch back to pink if desired.
+- **Details BarBorders in built-in border choices:** Added `Details BarBorder 1`, `Details BarBorder 2`, and `Details BarBorder 3` (`Interface\AddOns\Details\images\border_3`) to built-in border texture options so they are selectable even without Details! installed.
+- **Custom scrollable media dropdown selector UI (Image 2 style):** Upgraded options panel dropdowns to use a custom scrollable modal popup selector frame (`TacoTipMediaPickerFrame`). Includes texture strip previews for statusbar, border, and background choices, sharp white text with black drop shadows, scrollbar, mouse-wheel scrolling, checkmarks on active selections, and auto-dismiss on click outside or ESC.
+- **Real 9-slice border previews in media picker:** Border choices in `TacoTipMediaPickerFrame` render their real 9-slice sliced edge frames around each row item in the selection list.
+- **Cross-client `BackdropTemplate` safety:** Guarded modal picker frame creation with `BackdropTemplateMixin and "BackdropTemplate" or nil` so pre-9.0 and custom client builds load without template lookup errors.
+
+### Changed - 0.6.9
+
+- **Version metadata bumped to `0.6.9`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
+- **Enlarged 3D portrait dimensions:** Increased base 3D player model portrait dimensions from 42×56 to **60×80** (width 60px, height 80px) to match full multi-line tooltip height while maintaining an exact 3:4 aspect ratio.
+- **Default tooltip border texture:** Set default border texture to `Tooltip enlarged` with 20px edge size default. Registered `Tooltip enlarged` in built-in border choices and updated resolution matcher so SharedMedia border entries match by name as well as file path.
+- **Default tooltip border thickness:** Updated default border edge size to 20px.
+- **Updated Default Feature Toggles:** Enabled Guild Rank display (`show_guild_rank = true`) with `<Guild> Rank` format (`guild_rank_alt_style = true`), Item GearScore (`show_gs_items = true`), Faction Icon (`show_team = true`), and Group Role Icon (`show_role_icon = true`) by default.
+- **100% Locale Parity & Native Translations:** Audited all 10 non-English locale files (`deDE`, `esES`, `esMX`, `frFR`, `itIT`, `koKR`, `ptBR`, `ruRU`, `zhCN`, `zhTW`) against `enUS.lua`. Added native translations for all 3D portrait, shaman blue, offset slider/edit, and rank keys so no option string remains untranslated.
+
+### Fixed - 0.6.9
+
+- **Live drag tooltip follow fix:** Fixed issue where dragging the green dot after resetting to defaults did not move the tooltip because `OnUpdate` returned early when `custom_pos` was uninitialized. The tooltip now continuously follows the green drag button on screen during drag.
+- **Tooltip mover button state after default reset:** Fixed issue where clicking "Open Tooltip Mover" on the Positioning options subpage after resetting to defaults did nothing because the mover button was set to disabled. The mover button is now kept enabled so clicking it at any time automatically activates custom position mode and displays the green drag handle.
+- **Test suite `GameTooltip.GetUnit` mock cleanup:** Replaced direct `GameTooltip["GetUnit"]` assignments in `TacoTip_Tests.lua` with framework `Replace("GameTooltip.GetUnit", ...)` and automatic teardown restoration.
+- **Zero-warning audit:** Verified `luacheck .` produces 0 warnings across all production runtime files (`main.lua`, `options.lua`, `textures.lua`, `gearscore.lua`, `pawn.lua`, `Locale/*.lua`, and `TacoTip_Tests.lua`).
 
 ## [0.6.8] - 2026-08-11
 

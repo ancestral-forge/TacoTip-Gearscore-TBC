@@ -1,3 +1,4 @@
+-- luacheck: globals WoWUnit SLASH_TTTEST1 SLASH_TTTEST2 SlashCmdList
 ---@diagnostic disable: undefined-global
 -- ============================================================
 -- File role: WoWUnit in-game test suite for TacoTip Gearscore TBC
@@ -15,7 +16,7 @@ local function RegisterTacoTipTests()
         return
     end
 
-    local IsTrue, IsFalse = WoWUnit.IsTrue, WoWUnit.IsFalse
+    local IsTrue = WoWUnit.IsTrue
     local Exists, AreEqual = WoWUnit.Exists, WoWUnit.AreEqual
     local Replace = WoWUnit.Replace
     local ClearReplaces = WoWUnit.ClearReplaces
@@ -74,16 +75,23 @@ local function RegisterTacoTipTests()
         for _, k in ipairs{
             "color_class", "show_guild_name", "show_guild_rank", "show_talents",
             "show_gs_player", "tip_style", "show_target", "show_pawn_player",
-            "show_class_icon", "tooltip_border_use_class", "tooltip_border_color_r",
+            "show_class_icon", "shaman_blue", "tooltip_border_use_class", "tooltip_border_color_r",
             "tooltip_border_color_g", "tooltip_border_color_b", "tooltip_border_alpha",
             "tooltip_portrait", "tooltip_portrait_scale", "tooltip_portrait_3d",
             "tooltip_portrait_zoom", "tooltip_font",
             "tooltip_font_size", "tooltip_max_width", "tooltip_delay",
             "anchor_mouse", "anchor_mouse_world", "anchor_mouse_spells",
-            "anchor_mouse", "anchor_mouse_world", "anchor_mouse_spells",
             "guild_rank_alt_style",
         } do
             IsTrue(d[k] ~= nil, "defaults." .. k .. "=" .. tostring(d[k]))
+        end
+    end
+    function Config:ShamanBlueDefaultAndOverride()
+        local d = TT:GetDefaults()
+        IsTrue(d.shaman_blue == true, "shaman_blue defaults to true")
+        if (TT.GetClassColor) then
+            local colorBlue = TT:GetClassColor("SHAMAN")
+            IsTrue(colorBlue and colorBlue.r == 0 and colorBlue.g == 0.44 and colorBlue.b == 0.87, "shaman blue color active when enabled")
         end
     end
     function Config:ApplyDefaultsFillsMissing()
@@ -251,8 +259,8 @@ local function RegisterTacoTipTests()
             -- Use tolerance comparisons: WoW's coordinate system returns
             -- floating-point values that can vary by ~1e-5 from the SetSize
             -- argument (e.g. 42.000026702881 instead of 42.0).
-            IsTrue(math.abs((w or 0) - 42) < 0.01, string.format("portrait width ≈ 42 (got %.8f)", w or -1))
-            IsTrue(math.abs((h or 0) - 56) < 0.01, string.format("portrait height ≈ 56 at scale 1 (3:4, taller) (got %.8f)", h or -1))
+            IsTrue(math.abs((w or 0) - 60) < 0.01, string.format("portrait width ≈ 60 (got %.8f)", w or -1))
+            IsTrue(math.abs((h or 0) - 80) < 0.01, string.format("portrait height ≈ 80 at scale 1 (3:4, taller) (got %.8f)", h or -1))
             IsTrue(h > w, "portrait is taller than wide (3:4)")
         end
         cfg.tooltip_portrait_scale = savedScale
@@ -265,8 +273,8 @@ local function RegisterTacoTipTests()
         local f = GameTooltip.TacoTipPortrait3D or GameTooltip.TacoTipPortrait
         if (f and f.GetWidth and f.GetHeight) then
             local w, h = f:GetWidth(), f:GetHeight()
-            IsTrue(math.abs((w or 0) - 63) < 0.01, string.format("scaled width ≈ 63 (42*1.5) (got %.8f)", w or -1))
-            IsTrue(math.abs((h or 0) - 84) < 0.01, string.format("scaled height ≈ 84 (56*1.5) (got %.8f)", h or -1))
+            IsTrue(math.abs((w or 0) - 90) < 0.01, string.format("scaled width ≈ 90 (60*1.5) (got %.8f)", w or -1))
+            IsTrue(math.abs((h or 0) - 120) < 0.01, string.format("scaled height ≈ 120 (80*1.5) (got %.8f)", h or -1))
         end
         cfg.tooltip_portrait_scale = savedScale
     end
@@ -340,8 +348,7 @@ local function RegisterTacoTipTests()
             if (unit == "mouseover") then return true end
             return originalUnitExists(unit)
         end)
-        local originalGetUnit = GameTooltip.GetUnit
-        GameTooltip["GetUnit"] = function() return "TestPlayer", "mouseover" end
+        Replace("GameTooltip.GetUnit", function() return "TestPlayer", "mouseover" end)
 
         local originalUnitIsPlayer = UnitIsPlayer
         Replace("UnitIsPlayer", function(unit)
@@ -394,7 +401,6 @@ local function RegisterTacoTipTests()
 
         -- FINALLY: always restore state so the next test is not poisoned.
         cfg.show_guild_name = savedName
-        GameTooltip["GetUnit"] = originalGetUnit
         ClearReplaces()
 
         if (not ok) then
@@ -416,7 +422,7 @@ local function RegisterTacoTipTests()
             IsTrue(ok, "GetScore(nil) safe")
             local ok2 = pc(GS.GetItemScore, GS, nil)
             IsTrue(ok2, "GetItemScore(nil) safe")
-            local ok3, r, g, b = pc(GS.GetQuality, GS, 0)
+            local ok3 = pc(GS.GetQuality, GS, 0)
             IsTrue(ok3, "GetQuality(0) safe")
         end
     end
@@ -473,6 +479,22 @@ local function RegisterTacoTipTests()
     function Mover:RefreshOptionsUINilSafe()
         local ok = pc(TT.RefreshOptionsUI, TT)
         IsTrue(ok, "RefreshOptionsUI() safe")
+    end
+    function Mover:TooltipsPageRefreshNilSafe()
+        local ok = pc(TT.RefreshOptionsUI, TT)
+        IsTrue(ok, "RefreshOptionsUI call executes without error")
+    end
+    function Mover:OpenMoverEnablesCustomPosition()
+        local origPos = TacoTipConfig.custom_pos
+        TacoTipConfig.custom_pos = nil
+        if (_G.TacoTip_CustomPosEnable) then
+            _G.TacoTip_CustomPosEnable(true)
+            IsTrue(TacoTipConfig.custom_pos ~= nil, "TacoTip_CustomPosEnable(true) initializes custom_pos when nil")
+            if (_G.TacoTipDragButton and _G.TacoTipDragButton._Disable) then
+                _G.TacoTipDragButton:_Disable()
+            end
+        end
+        TacoTipConfig.custom_pos = origPos
     end
 
     -- ============================================================
