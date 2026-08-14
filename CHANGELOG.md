@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.0` | `2026-08-14` | Fix: Minimap & World Map POI / pin / node tooltip flickering resolved. Disabled mouse capture on GameTooltip, preserved true caller frame ownership in GameTooltip_SetDefaultAnchor, and guarded UPDATE_MOUSEOVER_UNIT against falsely hiding non-unit tooltips. |
 | `0.6.9` | `2026-08-13` | Shaman Blue default toggle for Classic Era/SoD, Details BarBorder 3 default border with 18px edge size, custom scrollable media dropdown selector UI (Image 2 style), updated unit tests and localization. |
 | `0.6.8` | `2026-08-11` | Fix: non-unit tooltip bleed-through & flicker resolved by converting deferred border timers to cancellable `C_Timer.NewTimer` handles and adding `GameTooltip:OnTooltipCleared` hook. Fix: all 4 WoWUnit tests passing (`DefaultsHaveKeys`, `ConfigDefaultsShowGuild`, `ClassicEraBleedThrough`, `ClassicEraFallbackParsing`). Removed `show_gs_delta` & `TacoTipGSHistory` tracking. |
 | `0.6.7` | `2026-08-10` | Version metadata bumped to `0.6.7`. SoD / Classic Era dual-spec rendering fix, merged Classic-Era bleed-through regression test. |
@@ -26,6 +27,18 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.0] - 2026-08-14
+
+### Fixed - 0.7.0
+
+- **Minimap & World Map tooltip flickering resolved:** Fixed rapid tooltip flickering when hovering over Minimap tracking icons, quest pins, trainer markers, resource nodes, and World Map pins across Classic Era, Season of Discovery, and TBC Classic Anniversary.
+  - **Mouse interaction disabled on `GameTooltip`:** Replaced all `tooltip:EnableMouse(true)` calls inside `GameTooltip_SetDefaultAnchor` with `tooltip:EnableMouse(false)`. Prevents `GameTooltip` from capturing mouse focus and triggering continuous `OnLeave`/`OnEnter` event cycles with underlying map frames.
+  - **Caller frame ownership preserved:** Removed destructive `tooltip:SetOwner(TacoTipMouseAnchor, ...)` and `tooltip:SetOwner(TacoTipDragButton, ...)` overrides from `GameTooltip_SetDefaultAnchor`. Preserving the original owner (e.g. `Minimap`, `WorldMapFrame`, `ActionButton`) prevents Blizzard's `UnitPositionFrameMixin:UpdateTooltips` and `GameTooltip_OnUpdate` from detecting an ownership mismatch and resetting/recreating tooltips every single frame.
+  - **`UPDATE_MOUSEOVER_UNIT` guard:** Guarded tooltip hiding on `UPDATE_MOUSEOVER_UNIT` to strictly check `GameTooltip:IsUnit("mouseover")` so non-unit tooltips (Minimap POIs, World Map icons, spells, items) are never falsely cleared or hidden during mouse movements.
+  - **`resolveTooltipUnit` strict check:** Enhanced `resolveTooltipUnit` to validate `tooltip:IsUnit(unit)` before returning unit tokens, ensuring stale unit data from prior player/NPC hovers is not returned when `GameTooltip` is displaying map POIs or other non-unit content.
+- **Version metadata bumped to `0.7.0`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
+- **Test suite expansion:** Added `TT-MinimapAndAnchor` test group to `TacoTip_Tests.lua` verifying owner preservation and mouse disablement on `GameTooltip_SetDefaultAnchor`.
 
 ## [0.6.9] - 2026-08-13
 

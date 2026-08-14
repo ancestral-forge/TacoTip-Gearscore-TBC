@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.6.9"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.0"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -530,7 +530,14 @@ local function resolveTooltipUnit(tooltip, unit)
     if (tooltip and tooltip.GetUnit) then
         local ok, _, tooltipUnit = pcall(tooltip.GetUnit, tooltip)
         if (ok and tooltipUnit and UnitExists and UnitExists(tooltipUnit)) then
-            return tooltipUnit
+            if (tooltip.IsUnit) then
+                local isUOk, isU = pcall(tooltip.IsUnit, tooltip, tooltipUnit)
+                if (isUOk and isU) then
+                    return tooltipUnit
+                end
+            else
+                return tooltipUnit
+            end
         end
     end
     return nil
@@ -1585,7 +1592,9 @@ hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
             else
                 tooltip:SetOwner(parent, "ANCHOR_RIGHT")
             end
-            tooltip:EnableMouse(true)
+            if (tooltip.EnableMouse) then
+                tooltip:EnableMouse(false)
+            end
             return
         end
     end
@@ -1594,12 +1603,8 @@ hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
             if (not TacoTipMouseAnchor) then
                 CreateMouseAnchor()
             end
-            tooltip:SetOwner(TacoTipMouseAnchor, "ANCHOR_NONE")
             tooltip:ClearAllPoints()
             tooltip:SetPoint("BOTTOMLEFT", TacoTipMouseAnchor, "CENTER", 10, 10)
-            tooltip:EnableMouse(true)
-        else
-            tooltip:EnableMouse(true)
         end
     else
         if (TacoTipConfig.custom_pos) then
@@ -1607,23 +1612,17 @@ hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
                 TacoTip_CustomPosEnable(false)
             end
             if (TacoTipDragButton) then
-                tooltip:SetOwner(TacoTipDragButton, "ANCHOR_NONE")
                 tooltip:ClearAllPoints()
                 local anchorPoint = TacoTipConfig.custom_anchor or "TOPLEFT"
                 tooltip:SetPoint(anchorPoint, TacoTipDragButton, anchorPoint)
-                if (TacoTipDragButton:IsShown()) then
-                    tooltip:EnableMouse(true)
-                else
-                    tooltip:EnableMouse(false)
-                end
             end
         elseif (TacoTipConfig.show_hp_bar and TacoTipConfig.show_power_bar) then
             tooltip:ClearAllPoints()
             tooltip:SetPoint("BOTTOMRIGHT", "UIParent", "BOTTOMRIGHT", -CONTAINER_OFFSET_X - 13, CONTAINER_OFFSET_Y + 9)
-            tooltip:EnableMouse(true)
-        else
-            tooltip:EnableMouse(true)
         end
+    end
+    if (tooltip.EnableMouse) then
+        tooltip:EnableMouse(false)
     end
 end)
 
@@ -2000,11 +1999,11 @@ local function onEvent(self, event, ...)
             end)
         end
     elseif (event == "UPDATE_MOUSEOVER_UNIT") then
-        if (resolveTooltipUnit(GameTooltip)) then
+        if (GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
             cancelFadeTimer()
             fadeTimer = C_Timer.NewTimer(0, function()
                 safeCall(function()
-                    if (not UnitExists("mouseover")) then
+                    if (not UnitExists("mouseover") and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
                         GameTooltip:Hide()
                     end
                 end)

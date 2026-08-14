@@ -22,7 +22,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.6.9` |
+| Public version | `v0.7.0` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -57,21 +57,18 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.6.9 (Recent v0.6.x Updates)
+## What's new in v0.7.0 (Recent v0.7.x Updates)
 
 | Feature / Fix | Description |
 | --- | --- |
+| **Minimap & World Map Flicker Fix** | Completely eliminated tooltip flickering when hovering Minimap POIs, quest pins, trainer blips, tracking icons, and World Map nodes by disabling mouse interception on `GameTooltip` and preserving caller frame ownership in `GameTooltip_SetDefaultAnchor`. |
+| **Accurate Unit Resolution** | `UPDATE_MOUSEOVER_UNIT` and event handlers validate `tooltip:IsUnit()` to ensure non-unit map tooltips are never falsely hidden or overwritten with stale unit data. |
 | **Enlarged 3D Player Portrait** | Increased base 3D portrait dimensions to **60×80** (width 60px, height 80px) to match full multi-line tooltip height. |
 | **Updated Feature Defaults** | Enabled Guild Rank (`<Guild> Rank`), Item GearScore, Faction Icon, Group Role Icon, and Shaman Blue by default. |
 | **Default Tooltip Border** | Set default border texture to `"Tooltip enlarged"` (`20px` edge size) with dynamic LibSharedMedia-3.0 resolution. |
 | **Mover Drag & TOPLEFT Default** | Mover handle defaults to `TOPLEFT`; live drag re-anchoring keeps `GameTooltip` continuously attached during drag. |
 | **Scrollable Media Picker** | Upgraded media dropdowns to a fixed-height scrollable modal popup UI (`TacoTipMediaPickerFrame`). |
 | **100% Locale Parity** | Native translations across all 11 locale files with key parity across 263 localized strings. |
-| **Buggy `show_gs_delta` Removed** | Fully removed `TacoTipGSHistory` tracking global to eliminate tooltip corruption and stale values. |
-| **Non-Unit Flicker Fixed** | Defensive `CAfter` border timers are tracked and cancelled on tooltip hide to prevent stale class borders. |
-| **Dual-Spec Support (Era & SoD)** | Replaced WotLK-only dual-spec guards with `hasDualSpec` capability flag so secondary specs display on Era/SoD. |
-| **Tooltip API Modernization** | Refactored line queries across `main.lua` to use native C++ line getters (`GetLeftLine`/`GetRightLine`). |
-| **7th Red Quality Tier** | Expanded GearScore engine from 6 to 7 quality tiers, adding Artifact red tier for top-end ~iLvl 93+ sets. |
 
 ## How TacoTip compares
 
@@ -240,7 +237,7 @@ Current localization work included in this build:
 | Optional Pawn support | Enabled automatically when Pawn is installed |
 | Optional SharedMedia support | Used automatically when compatible fonts/textures are registered |
 | Saved settings | Stored through `TacoTipConfig` (auto-repaired on load if corrupt) |
-| Future direction | More polish, compatibility work, and quality-of-life features beyond `v0.6.9` |
+| Future direction | More polish, compatibility work, and quality-of-life features beyond `v0.7.0` |
 | Feedback | Use project comments or the issue tracker |
 
 ## Release Stability & Quality Assurance

@@ -514,7 +514,29 @@ local function RegisterTacoTipTests()
         IsTrue(count >= 40, "defaults table has full key set (" .. count .. ")")
     end
 
-    print("|cff44ff44[TacoTip] 8 test groups registered. Type /tttest to run.|r")
+    -- ============================================================
+    -- TT-MinimapAndAnchor: Minimap POI & anchor flicker prevention
+    -- ============================================================
+    local MinimapAnchor = WoWUnit("TacoTip-MinimapAndAnchor", "PLAYER_ENTERING_WORLD")
+
+    function MinimapAnchor:DefaultAnchorPreservesOwner()
+        if (not GameTooltip or not _G.GameTooltip_SetDefaultAnchor) then return end
+        local testParent = CreateFrame("Frame", nil, UIParent)
+        _G.GameTooltip_SetDefaultAnchor(GameTooltip, testParent)
+        local owner = GameTooltip:GetOwner()
+        AreEqual(owner, testParent, "GameTooltip_SetDefaultAnchor preserves testParent owner")
+    end
+
+    function MinimapAnchor:DefaultAnchorDisablesMouse()
+        if (not GameTooltip or not _G.GameTooltip_SetDefaultAnchor) then return end
+        local testParent = CreateFrame("Frame", nil, UIParent)
+        _G.GameTooltip_SetDefaultAnchor(GameTooltip, testParent)
+        if (GameTooltip.IsMouseEnabled) then
+            IsTrue(not GameTooltip:IsMouseEnabled(), "GameTooltip has mouse disabled to prevent hover flicker")
+        end
+    end
+
+    print("|cff44ff44[TacoTip] 9 test groups registered. Type /tttest to run.|r")
 end
 
 SLASH_TTTEST1 = "/tttest"
