@@ -20,7 +20,9 @@ local function RegisterTacoTipTests()
     local Exists, AreEqual = WoWUnit.Exists, WoWUnit.AreEqual
     local Replace = WoWUnit.Replace
     local ClearReplaces = WoWUnit.ClearReplaces
-    local function pc(p, ...) local ok, r = pcall(p, ...); return ok, r end
+    local function pc(p, ...)
+        local ok, r = pcall(p, ...); return ok, r
+    end
 
     -- ============================================================
     -- TT-Core: addon loaded, namespace sane, public API present
@@ -31,8 +33,9 @@ local function RegisterTacoTipTests()
         IsTrue(type(TT) == "table", "TT namespace is a table")
         IsTrue(type(_G.TacoTipConfig) == "table", "TacoTipConfig global exists")
     end
+
     function Core:PublicAPIPresent()
-        for _, m in ipairs{
+        for _, m in ipairs {
             "GetDefaults", "ApplyConfigDefaults", "SafeSanitizeConfig",
             "ApplyTooltipAppearance", "SyncTooltipMover",
             "GetFormattedSpecializationText", "RefreshOptionsUI",
@@ -40,10 +43,13 @@ local function RegisterTacoTipTests()
             Exists(TT[m], "TT." .. m)
         end
     end
+
     function Core:VersionMetadata()
-        local ok, ver = pc(function() return (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or GetAddOnMetadata(addonName, "Version") end)
+        local ok, ver = pc(function() return (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or
+            GetAddOnMetadata(addonName, "Version") end)
         IsTrue(ok and type(ver) == "string" and ver ~= "", "version metadata readable: " .. tostring(ver))
     end
+
     function Core:InterfaceSupport()
         local ok, toc = pc(function()
             local key = "Interface"
@@ -72,7 +78,7 @@ local function RegisterTacoTipTests()
 
     function Config:DefaultsHaveKeys()
         local d = TT:GetDefaults()
-        for _, k in ipairs{
+        for _, k in ipairs {
             "color_class", "show_guild_name", "show_guild_rank", "show_talents",
             "show_gs_player", "tip_style", "show_target", "show_pawn_player",
             "show_class_icon", "shaman_blue", "tooltip_border_use_class", "tooltip_border_color_r",
@@ -86,26 +92,31 @@ local function RegisterTacoTipTests()
             IsTrue(d[k] ~= nil, "defaults." .. k .. "=" .. tostring(d[k]))
         end
     end
+
     function Config:ShamanBlueDefaultAndOverride()
         local d = TT:GetDefaults()
         IsTrue(d.shaman_blue == true, "shaman_blue defaults to true")
         if (TT.GetClassColor) then
             local colorBlue = TT:GetClassColor("SHAMAN")
-            IsTrue(colorBlue and colorBlue.r == 0 and colorBlue.g == 0.44 and colorBlue.b == 0.87, "shaman blue color active when enabled")
+            IsTrue(colorBlue and colorBlue.r == 0 and colorBlue.g == 0.44 and colorBlue.b == 0.87,
+                "shaman blue color active when enabled")
         end
     end
+
     function Config:ApplyDefaultsFillsMissing()
         local cfg = { color_class = true }
         TT:ApplyConfigDefaults(cfg)
         IsTrue(cfg.show_guild_name == true, "missing key filled from defaults")
         IsTrue(type(cfg.tooltip_border_color_r) == "number", "numeric default applied")
     end
+
     function Config:SanitizeCoercesBooleans()
         local cfg = TT:GetDefaults()
         cfg.color_class = "true" -- corrupted string form
         TT:SafeSanitizeConfig(cfg)
         IsTrue(cfg.color_class == true, "string-boolean repaired to real boolean")
     end
+
     function Config:SanitizeBounds()
         local cfg = TT:GetDefaults()
         cfg.class_icon_size = 999
@@ -131,7 +142,8 @@ local function RegisterTacoTipTests()
 
     function Borders:PlayerGetsClassBorder()
         local cfg = _G.TacoTipConfig
-        local savedUse, savedR, savedG, savedB = cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b
+        local savedUse, savedR, savedG, savedB = cfg.tooltip_border_use_class, cfg.tooltip_border_color_r,
+            cfg.tooltip_border_color_g, cfg.tooltip_border_color_b
         cfg.tooltip_border_use_class = true
         cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = 1, 1, 1
         local ok = pc(TT.ApplyTooltipAppearance, TT, GameTooltip, "player")
@@ -143,13 +155,16 @@ local function RegisterTacoTipTests()
             if (testClass) then
                 local r, g, b = bf:GetBackdropBorderColor()
                 -- Class border must differ from the white base (1,1,1).
-                IsTrue(not (r == 1 and g == 1 and b == 1), string.format("player border tinted (%.2f,%.2f,%.2f)", r or -1, g or -1, b or -1))
+                IsTrue(not (r == 1 and g == 1 and b == 1),
+                    string.format("player border tinted (%.2f,%.2f,%.2f)", r or -1, g or -1, b or -1))
             else
                 print("WARN: Borders:PlayerGetsClassBorder skipped — UnitClass not resolvable")
             end
         end
-        cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = savedUse, savedR, savedG, savedB
+        cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b =
+        savedUse, savedR, savedG, savedB
     end
+
     -- Classic-Era bleed-through: a player tooltip (class border applied) must
     -- NOT leave its class tint on any subsequent non-unit transition. This is
     -- the SoD/Classic-Era reproduction of the reported minimap/world-map bug,
@@ -161,7 +176,8 @@ local function RegisterTacoTipTests()
     -- tooltips must never inherit stale unit state.
     function Borders:ClassicEraBleedThrough()
         local cfg = _G.TacoTipConfig
-        local savedUse, savedR, savedG, savedB = cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b
+        local savedUse, savedR, savedG, savedB = cfg.tooltip_border_use_class, cfg.tooltip_border_color_r,
+            cfg.tooltip_border_color_g, cfg.tooltip_border_color_b
         cfg.tooltip_border_use_class = true
         -- Pin the base (non-class) border colour to white so the post-reset
         -- assertions are deterministic. resetTooltipBorderToDefault writes
@@ -239,7 +255,8 @@ local function RegisterTacoTipTests()
             IsTrue(false, "backdrop frame missing for spell-reset assertion")
         end
 
-        cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b = savedUse, savedR, savedG, savedB
+        cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b =
+        savedUse, savedR, savedG, savedB
     end
 
     -- ============================================================
@@ -260,11 +277,13 @@ local function RegisterTacoTipTests()
             -- floating-point values that can vary by ~1e-5 from the SetSize
             -- argument (e.g. 42.000026702881 instead of 42.0).
             IsTrue(math.abs((w or 0) - 60) < 0.01, string.format("portrait width ≈ 60 (got %.8f)", w or -1))
-            IsTrue(math.abs((h or 0) - 80) < 0.01, string.format("portrait height ≈ 80 at scale 1 (3:4, taller) (got %.8f)", h or -1))
+            IsTrue(math.abs((h or 0) - 80) < 0.01,
+                string.format("portrait height ≈ 80 at scale 1 (3:4, taller) (got %.8f)", h or -1))
             IsTrue(h > w, "portrait is taller than wide (3:4)")
         end
         cfg.tooltip_portrait_scale = savedScale
     end
+
     function Portrait:ScaledSizeKeepsRatio()
         local cfg = _G.TacoTipConfig
         local savedScale = cfg.tooltip_portrait_scale
@@ -295,11 +314,13 @@ local function RegisterTacoTipTests()
         AreEqual(rank, "Rank 5", "GetGuildInfo mock returns guild rank")
         ClearReplaces()
     end
+
     function Guild:ConfigDefaultsShowGuild()
         local d = TT:GetDefaults()
         IsTrue(d.show_guild_name == true, "guild name shown by default")
         IsTrue(type(d.guild_rank_alt_style) == "boolean", "guild_rank_alt_style default is boolean")
     end
+
     function Guild:RenderPathDoesNotError()
         -- End-to-end: mock guild, paint player tooltip, confirm no error and
         -- the guild line is present when the client populates it synchronously.
@@ -321,6 +342,7 @@ local function RegisterTacoTipTests()
         cfg.show_guild_name = savedName
         ClearReplaces()
     end
+
     function Guild:ClassicEraFallbackParsing()
         -- Classic-Era / pre-GetGuildInfo fallback: when the client returns no
         -- guild via GetGuildInfo, the bracketed "<Guild>" line in the tooltip
@@ -408,7 +430,6 @@ local function RegisterTacoTipTests()
         end
     end
 
-
     -- ============================================================
     -- TT-Stats: GearScore, Pawn, talents nil-safe
     -- ============================================================
@@ -426,6 +447,7 @@ local function RegisterTacoTipTests()
             IsTrue(ok3, "GetQuality(0) safe")
         end
     end
+
     function Stats:PawnNilSafe()
         local Pawn = _G.TT_PAWN
         Exists(Pawn, "TT_PAWN global present")
@@ -434,11 +456,13 @@ local function RegisterTacoTipTests()
             IsTrue(ok, "Pawn GetScore(nil) safe")
         end
     end
+
     function Stats:SpecializationNilSafe()
         local ok, txt = pc(TT.GetFormattedSpecializationText, TT, nil, nil, nil, nil, nil)
         IsTrue(ok, "GetFormattedSpecializationText(nil...) safe")
         IsTrue(txt == nil, "nil inputs yield nil spec text")
     end
+
     function Stats:ClassicInspectorPresent()
         local CI = LibStub and LibStub("LibClassicInspector", true)
         Exists(CI, "LibClassicInspector loaded")
@@ -447,6 +471,7 @@ local function RegisterTacoTipTests()
             IsTrue(ok, "CI:GetSpecializationName safe")
         end
     end
+
     function Stats:DualSpecGroup2Reachable()
         -- Regression for SoD dual-spec (prism-full audit F1/F2/F3): the
         -- vendored LibClassicInspector must NOT hard-block talent group 2 on
@@ -476,14 +501,17 @@ local function RegisterTacoTipTests()
         local ok = pc(TT.SyncTooltipMover, TT, nil)
         IsTrue(ok, "SyncTooltipMover(nil) safe")
     end
+
     function Mover:RefreshOptionsUINilSafe()
         local ok = pc(TT.RefreshOptionsUI, TT)
         IsTrue(ok, "RefreshOptionsUI() safe")
     end
+
     function Mover:TooltipsPageRefreshNilSafe()
         local ok = pc(TT.RefreshOptionsUI, TT)
         IsTrue(ok, "RefreshOptionsUI call executes without error")
     end
+
     function Mover:OpenMoverEnablesCustomPosition()
         local origPos = TacoTipConfig.custom_pos
         TacoTipConfig.custom_pos = nil
@@ -507,6 +535,7 @@ local function RegisterTacoTipTests()
         Exists(_G.TT_PAWN, "pawn.lua exposed TT_PAWN")
         Exists(_G.TACOTIP_LOCALE, "locale table loaded")
     end
+
     function Modules:ConfigHasAllDefaults()
         local d = TT:GetDefaults()
         local count = 0

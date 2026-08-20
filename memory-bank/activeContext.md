@@ -32,8 +32,8 @@
 - **Defensive class-border follow-up:** a `C_Timer.After(0.05, ...)` re-applies the class-tinted border in case Blizzard refreshes the tooltip frame after `OnTooltipSetUnit` completes, and an `OnShow` hook re-applies it on re-show (deferred to next frame so Blizzard's own setup runs first).
 - **Dual-spec dedup:** Both `active == 1` and `active == 2` branches now skip rendering the inactive spec when `spec1 == spec2`, preventing the same tree being printed twice.
 - **Class icon reposition:** moved anchor from `(-4, -2)` to `(-10, -8)` and default size from 16 to 20 for better visual breathing room.
-- **Border thickness slider:** added `createOptionsSlider` for `tooltip_border_edge_size` (range 4–48px, default 16) in the Tooltips page's "Backdrop colors & textures" section, wired into both the 2.5.3+ border-only path and the pre-2.5.3 fallback path in `applyTooltipBackdrop`.
-- **New config key:** `TacoTipConfig.tooltip_border_edge_size` (default `16`)
+- **Border thickness slider:** added `createOptionsSlider` for `tooltip_border_edge_size` (range 4–48px, default 14) in the Tooltips page's "Backdrop colors & textures" section, wired into both the 2.5.3+ border-only path and the pre-2.5.3 fallback path in `applyTooltipBackdrop`.
+- **New config key:** `TacoTipConfig.tooltip_border_edge_size` (default `14`)
 - **Packaged/release metadata and docs now aligned on `0.5.2`.**
 
 ## 2026-05-28 - 0.4.9 release prep finalized

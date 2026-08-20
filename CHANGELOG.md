@@ -4,7 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
-| `0.7.0` | `2026-08-14` | Fix: Minimap & World Map POI / pin / node tooltip flickering resolved. Disabled mouse capture on GameTooltip, preserved true caller frame ownership in GameTooltip_SetDefaultAnchor, and guarded UPDATE_MOUSEOVER_UNIT against falsely hiding non-unit tooltips. |
+| `0.7.0` | `2026-08-14` | Fix: Minimap & World Map POI / pin / node tooltip flickering resolved. Disabled mouse capture on GameTooltip, preserved true caller frame ownership in GameTooltip_SetDefaultAnchor, and guarded UPDATE_MOUSEOVER_UNIT against falsely hiding non-unit tooltips. Tooltip border edge size default changed to 14px. Deferred border timers converted to cancellable C_Timer.NewTimer handles. |
 | `0.6.9` | `2026-08-13` | Shaman Blue default toggle for Classic Era/SoD, Details BarBorder 3 default border with 18px edge size, custom scrollable media dropdown selector UI (Image 2 style), updated unit tests and localization. |
 | `0.6.8` | `2026-08-11` | Fix: non-unit tooltip bleed-through & flicker resolved by converting deferred border timers to cancellable `C_Timer.NewTimer` handles and adding `GameTooltip:OnTooltipCleared` hook. Fix: all 4 WoWUnit tests passing (`DefaultsHaveKeys`, `ConfigDefaultsShowGuild`, `ClassicEraBleedThrough`, `ClassicEraFallbackParsing`). Removed `show_gs_delta` & `TacoTipGSHistory` tracking. |
 | `0.6.7` | `2026-08-10` | Version metadata bumped to `0.6.7`. SoD / Classic Era dual-spec rendering fix, merged Classic-Era bleed-through regression test. |
@@ -39,6 +39,11 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
   - **`resolveTooltipUnit` strict check:** Enhanced `resolveTooltipUnit` to validate `tooltip:IsUnit(unit)` before returning unit tokens, ensuring stale unit data from prior player/NPC hovers is not returned when `GameTooltip` is displaying map POIs or other non-unit content.
 - **Version metadata bumped to `0.7.0`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
 - **Test suite expansion:** Added `TT-MinimapAndAnchor` test group to `TacoTip_Tests.lua` verifying owner preservation and mouse disablement on `GameTooltip_SetDefaultAnchor`.
+
+### Changed - 0.7.0
+
+- **Tooltip border edge size default now `14px`:** `tooltip_border_edge_size` default changed from `18` to `14` (range 4–48 unchanged). Slider help text and `enUS` locale updated; the options refresh fallback now reads `TT:GetDefaults()` instead of a stale literal so defaults cannot drift again.
+- **Deferred tooltip timers are now always cancellable `C_Timer.NewTimer`:** Removed the `C_Timer.After` fallback branches in the class-tinted border deferral (`onTooltipShow`) and the defensive backdrop re-apply (`ApplyTooltipAppearance`). Every deferred tooltip timer is now a cancellable handle owned by `borderDeferTimer` / `classBorderDeferTimer`, explicitly cancelled on every clear/show so a stale follow-up can never fire on a later non-unit tooltip or after rapid hover churn. The fade-out timer (`fadeTimer`) is now cancelled in the same central `clearTooltipVisuals` path, so all four deferred tooltip timers (`delayedTooltipTimer`, `borderDeferTimer`, `classBorderDeferTimer`, `fadeTimer`) reset cleanly together on every clear/show.
 
 ## [0.6.9] - 2026-08-13
 

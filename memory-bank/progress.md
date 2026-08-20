@@ -33,8 +33,8 @@
 - **Dual-spec dedup:** inactive spec line only rendered when `spec1 ~= spec2`.
 - **Class icon reposition:** anchor `(-10, -8)`, default size 20.
 - **Default border backup:** changed from gray `0.5/0.5/0.5` to white `1/1/1` at alpha 0.85.
-- **Border thickness slider:** added `createOptionsSlider` for `tooltip_border_edge_size` (4–48px, default 16) in the Tooltips page, wired into both backdrop paths.
-- **New config key:** `TacoTipConfig.tooltip_border_edge_size` (default `16`)
+- **Border thickness slider:** added `createOptionsSlider` for `tooltip_border_edge_size` (4–48px, default 14) in the Tooltips page, wired into both backdrop paths.
+- **New config key:** `TacoTipConfig.tooltip_border_edge_size` (default `14`)
 - **Locale:** added `OPTIONS_TOOLTIP_BORDER_THICKNESS` + `OPTIONS_TOOLTIP_BORDER_THICKNESS_DESC` to `Locale/enUS.lua`.
 - **All version metadata bumped to `0.5.2`** in `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`.
 

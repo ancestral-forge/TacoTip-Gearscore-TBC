@@ -583,45 +583,29 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
     -- frame after OnTooltipSetUnit completes).
     if ((TacoTipConfig.tooltip_border_use_class or TacoTipConfig.color_class) and isPlayerTooltip) then
         local deferralGen = tooltip._borderDeferralGen or 0
-        if (NewTimer) then
-            borderDeferTimer = NewTimer(0.05, function()
-                safeCall(function()
-                    if (tooltip._borderDeferralGen ~= deferralGen) then
-                        return
-                    end
-                    if (not tooltip or not tooltip:IsShown()) then
-                        return
-                    end
-                    local refreshed = tooltip.TacoTipPlayerClassColor
-                    if (not refreshed) then
-                        return
-                    end
-                    if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                        return
-                    end
-                    applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
-                end)
+        -- Always use a cancellable C_Timer.NewTimer handle so the follow-up
+        -- can be cancelled by cancelDeferredAppearance() on tooltip clear /
+        -- show. An uncancellable C_Timer.After here could fire on a later
+        -- non-unit tooltip (bleed-through) or on a stale unit after rapid
+        -- hover churn.
+        borderDeferTimer = NewTimer(0.05, function()
+            safeCall(function()
+                if (tooltip._borderDeferralGen ~= deferralGen) then
+                    return
+                end
+                if (not tooltip or not tooltip:IsShown()) then
+                    return
+                end
+                local refreshed = tooltip.TacoTipPlayerClassColor
+                if (not refreshed) then
+                    return
+                end
+                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                    return
+                end
+                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
             end)
-        else
-            CAfter(0.05, function()
-                safeCall(function()
-                    if (tooltip._borderDeferralGen ~= deferralGen) then
-                        return
-                    end
-                    if (not tooltip or not tooltip:IsShown()) then
-                        return
-                    end
-                    local refreshed = tooltip.TacoTipPlayerClassColor
-                    if (not refreshed) then
-                        return
-                    end
-                    if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                        return
-                    end
-                    applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
-                end)
-            end)
-        end
+        end)
     end
 
     applyTooltipFonts(tooltip)
@@ -722,9 +706,10 @@ end
 -- F3: track the deferred border re-apply timers so a fast tooltip recycle
 -- (map/minimap POI cycling) cannot paint a stale class border one frame late.
 -- Both the class-tinted border deferral (onTooltipShow) and the defensive
--- backdrop re-apply (ApplyTooltipAppearance) schedule a C_Timer.After that is
--- otherwise uncancellable — cancelDelayedTooltip() only cancels the unit
--- tooltip timer, so these must be cancelled explicitly on every clear/show.
+-- backdrop re-apply (ApplyTooltipAppearance) schedule a cancellable
+-- C_Timer.NewTimer handle — cancelDelayedTooltip() only cancels the unit
+-- tooltip timer, so these must also be cancelled explicitly on every
+-- clear/show so a stale follow-up can never fire on a later non-unit tooltip.
 -- (borderDeferTimer / classBorderDeferTimer are declared at the top of the file.)
 local function cancelDeferredAppearance()
     if (borderDeferTimer) then
@@ -751,9 +736,9 @@ local function clearTooltipVisuals(tooltip)
     end
     tooltip._borderDeferralGen = (tooltip._borderDeferralGen or 0) + 1
 
-
     cancelDelayedTooltip()
     cancelDeferredAppearance()
+    cancelFadeTimer()
     clearTooltipPlayerClassColor(tooltip)
     resetTooltipBorderToDefault(tooltip)
     clearTooltipGuildLine(tooltip)
@@ -1176,7 +1161,7 @@ local function onTooltipSetUnit(tooltip)
                         if (avg_ilvl and avg_ilvl > 0) then
                             if (TacoTipConfig.show_ilvl_inline) then
                                 text[1] = text[1] ..
-                                string.format(" |cFF%02x%02x%02x[%s]|r", r * 255, g * 255, b * 255, avg_ilvl)
+                                    string.format(" |cFF%02x%02x%02x[%s]|r", r * 255, g * 255, b * 255, avg_ilvl)
                             else
                                 tinsert(linesToAdd,
                                     { string.format("iLvl: |cFF%02x%02x%02x%s|r", r * 255, g * 255, b * 255, avg_ilvl), 1, 1, 1 })
@@ -1482,45 +1467,29 @@ local function onTooltipShow(tooltip)
     end
 
     local deferralGen = tooltip._borderDeferralGen or 0
-    if (NewTimer) then
-        classBorderDeferTimer = NewTimer(0, function()
-            safeCall(function()
-                if (tooltip._borderDeferralGen ~= deferralGen) then
-                    return
-                end
-                if (not tooltip or not tooltip:IsShown()) then
-                    return
-                end
-                local refreshed = tooltip.TacoTipPlayerClassColor
-                if (not refreshed) then
-                    return
-                end
-                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                    return
-                end
-                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
-            end)
+    -- Always use a cancellable C_Timer.NewTimer handle so the follow-up
+    -- can be cancelled by cancelDeferredAppearance() on tooltip clear /
+    -- show. An uncancellable C_Timer.After here could fire on a later
+    -- non-unit tooltip (bleed-through) or on a stale unit after rapid
+    -- hover churn.
+    classBorderDeferTimer = NewTimer(0, function()
+        safeCall(function()
+            if (tooltip._borderDeferralGen ~= deferralGen) then
+                return
+            end
+            if (not tooltip or not tooltip:IsShown()) then
+                return
+            end
+            local refreshed = tooltip.TacoTipPlayerClassColor
+            if (not refreshed) then
+                return
+            end
+            if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
+                return
+            end
+            applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
         end)
-    else
-        classBorderDeferTimer = CAfter(0, function()
-            safeCall(function()
-                if (tooltip._borderDeferralGen ~= deferralGen) then
-                    return
-                end
-                if (not tooltip or not tooltip:IsShown()) then
-                    return
-                end
-                local refreshed = tooltip.TacoTipPlayerClassColor
-                if (not refreshed) then
-                    return
-                end
-                if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
-                    return
-                end
-                applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
-            end)
-        end)
-    end
+    end)
 end
 
 local function registerTooltipVisualClearing(tooltipFrame)

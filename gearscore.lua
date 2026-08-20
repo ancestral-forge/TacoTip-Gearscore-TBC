@@ -71,7 +71,8 @@ local function registerBootstrapSlash()
             if (TacoTipConfig) then
                 TacoTipConfig.custom_pos = nil
             end
-            print("|cff59f0dcTacoTip:|r "..((L and L["Custom tooltip position disabled."]) or "Custom tooltip position disabled."))
+            print("|cff59f0dcTacoTip:|r " ..
+                ((L and L["Custom tooltip position disabled."]) or "Custom tooltip position disabled."))
         elseif (TT and TT.OpenOptionsPanel) then
             TT.OpenOptionsPanel()
         else
@@ -108,7 +109,7 @@ end
 local MAX_SCORE = BRACKET_SIZE * 7
 
 local GS_ItemTypes = {
-    ["INVTYPE_RELIC"] = { ["SlotMOD"] = 0.3164, ["ItemSlot"] = 18, ["Enchantable"] = false},
+    ["INVTYPE_RELIC"] = { ["SlotMOD"] = 0.3164, ["ItemSlot"] = 18, ["Enchantable"] = false },
     ["INVTYPE_TRINKET"] = { ["SlotMOD"] = 0.5625, ["ItemSlot"] = 33, ["Enchantable"] = false },
     ["INVTYPE_2HWEAPON"] = { ["SlotMOD"] = 2.000, ["ItemSlot"] = 16, ["Enchantable"] = true },
     ["INVTYPE_WEAPONMAINHAND"] = { ["SlotMOD"] = 1.0000, ["ItemSlot"] = 16, ["Enchantable"] = true },
@@ -152,13 +153,13 @@ local GS_Formula = {
 }
 
 local GS_Quality = {
-    [BRACKET_SIZE]      = { r = 0.50, g = 0.50, b = 0.50, label = "Trash" },
-    [BRACKET_SIZE * 2]  = { r = 1.00, g = 1.00, b = 1.00, label = "Common" },
-    [BRACKET_SIZE * 3]  = { r = 0.12, g = 0.81, b = 0.04, label = "Uncommon" },
-    [BRACKET_SIZE * 4]  = { r = 0.12, g = 0.40, b = 0.83, label = "Superior" },
-    [BRACKET_SIZE * 5]  = { r = 0.63, g = 0.20, b = 0.83, label = "Epic" },
-    [BRACKET_SIZE * 6]  = { r = 1.00, g = 0.63, b = 0.00, label = "Legendary" },
-    [BRACKET_SIZE * 7]  = { r = 0.92, g = 0.10, b = 0.10, label = "Artifact" },
+    [BRACKET_SIZE]     = { r = 0.50, g = 0.50, b = 0.50, label = "Trash" },
+    [BRACKET_SIZE * 2] = { r = 1.00, g = 1.00, b = 1.00, label = "Common" },
+    [BRACKET_SIZE * 3] = { r = 0.12, g = 0.81, b = 0.04, label = "Uncommon" },
+    [BRACKET_SIZE * 4] = { r = 0.12, g = 0.40, b = 0.83, label = "Superior" },
+    [BRACKET_SIZE * 5] = { r = 0.63, g = 0.20, b = 0.83, label = "Epic" },
+    [BRACKET_SIZE * 6] = { r = 1.00, g = 0.63, b = 0.00, label = "Legendary" },
+    [BRACKET_SIZE * 7] = { r = 0.92, g = 0.10, b = 0.10, label = "Artifact" },
 }
 
 local function getPlayerGUID(arg)
@@ -189,7 +190,6 @@ function TT_GS:GetQuality(ItemScore)
     return 0.5, 0.5, 0.5, "Trash"
 end
 
-
 function TT_GS:GetItemScore(ItemLink)
     if not (ItemLink) then
         return 0, 0, 0.1, 0.1, 0.1
@@ -202,7 +202,6 @@ function TT_GS:GetItemScore(ItemLink)
         end
     end
     if (itemLinkOut and ItemRarity and ItemLevel and ItemEquipLoc and GS_ItemTypes[ItemEquipLoc]) then
-
         local Table
         local QualityScale = 1
         local GearScore
@@ -234,8 +233,10 @@ function TT_GS:GetItemScore(ItemLink)
             Table = GS_Formula["A"]
         end
         if ((ItemRarity >= 2) and (ItemRarity <= 4)) then
-            local Red, Green, Blue = TT_GS:GetQuality((floor(((ItemLevel - Table[ItemRarity].A) / Table[ItemRarity].B) * 1 * Scale)) * 11.25)
-            GearScore = floor(((ItemLevel - Table[ItemRarity].A) / Table[ItemRarity].B) * GS_ItemTypes[ItemEquipLoc].SlotMOD * Scale * QualityScale)
+            local Red, Green, Blue = TT_GS:GetQuality((floor(((ItemLevel - Table[ItemRarity].A) / Table[ItemRarity].B) * 1 * Scale)) *
+                11.25)
+            GearScore = floor(((ItemLevel - Table[ItemRarity].A) / Table[ItemRarity].B) *
+                GS_ItemTypes[ItemEquipLoc].SlotMOD * Scale * QualityScale)
             if (ItemLevel == 187.05) then
                 ItemLevel = 0
             end
@@ -260,7 +261,7 @@ function TT_GS:GetItemHunterScore(ItemLink)
 end
 
 local function itemcacheCB(tbl, id)
-    for i=1,#tbl.items do
+    for i = 1, #tbl.items do
         if (id == tbl.items[i]) then
             table.remove(tbl.items, i)
         end
@@ -276,8 +277,8 @@ function TT_GS:GetScore(unitorguid, useCallback)
     if (guid) then
         if (guid ~= UnitGUID("player")) then
             local _, invTime = CI:GetLastCacheTime(guid)
-            if(invTime == 0) then
-                return 0,0
+            if (invTime == 0) then
+                return 0, 0
             end
         end
 
@@ -299,7 +300,7 @@ function TT_GS:GetScore(unitorguid, useCallback)
         local cb_table
 
         if (useCallback) then
-            cb_table = {["guid"] = guid, ["items"] = {}}
+            cb_table = { ["guid"] = guid, ["items"] = {} }
         end
 
         if (mainHandItem) then
@@ -361,7 +362,7 @@ function TT_GS:GetScore(unitorguid, useCallback)
         end
 
         for i = 1, 18 do
-            if ( i ~= 4 ) and ( i ~= 17 ) then
+            if (i ~= 4) and (i ~= 17) then
                 local item = CI:GetInventoryItemMixin(guid, i)
                 if (item) then
                     if (item:IsItemDataCached()) then
@@ -373,7 +374,7 @@ function TT_GS:GetScore(unitorguid, useCallback)
                                 TempScore = TempScore * 5.3224
                             end
                         end
-                        if ( i == 16 ) then
+                        if (i == 16) then
                             TempScore = TempScore * TitanGrip
                         end
                         GearScore = GearScore + TempScore
@@ -397,9 +398,8 @@ function TT_GS:GetScore(unitorguid, useCallback)
             end
         end
         if (IsReady and GearScore > 0 and ItemCount > 0) then
-            return floor(GearScore), floor(LevelTotal/ItemCount)
+            return floor(GearScore), floor(LevelTotal / ItemCount)
         end
     end
-    return 0,0
+    return 0, 0
 end
-
