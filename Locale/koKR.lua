@@ -137,9 +137,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_CHARACTER_ILVL_OFF"] = "평균 아이템 레벨 오버레이가 비활성화되어 있습니다.",
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "오버레이 이동 도구가 잠금 해제되어 있습니다.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "오버레이 이동 도구가 잠겨 있습니다.",
-    ["OPTIONS_TOOLTIPS_PAGE_DESC"] = "TacoTip이 유닛 및 아이템 툴팁에 추가하는 정보를 조정하고, 옵션 UI를 벗어나지 않고 결과를 미리 볼 수 있습니다.",
+    ["OPTIONS_TOOLTIPS_PAGE_DESC"] = "TacoTip이 유닛 및 아이템 툴팁에 추가하는 정보를 조정합니다.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "TacoTip이 기본적으로 얼마나 많은 정보를 표시할지 선택하세요. 혼합 스타일은 기본적으로 간소화 레이아웃을 보여주고 Shift를 누르는 동안 전체 레이아웃으로 확장됩니다 — 실시간 툴팁과 이 미리보기 모두에서.",
+    "TacoTip이 기본적으로 얼마나 많은 정보를 표시할지 선택하세요. 혼합 스타일은 기본적으로 간소화 레이아웃을 보여주고 Shift를 누르는 동안 전체 레이아웃으로 확장됩니다.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "유닛 툴팁 내용",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "아이템 툴팁 정보",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "시각 스타일",
@@ -187,8 +187,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "체력 및 자원 바 텍스처",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "체력 바와 자원 바에 동일한 텍스처를 사용합니다. 하나의 드롭다운이 각 텍스처를 전체 바 미리보기와 이름으로 보여 주며, Merfin Plus 같은 SharedMedia 팩은 미디어를 등록하면 자동으로 표시됩니다.",
-    ["OPTIONS_PREVIEW_HEADER"] = "실시간 미리보기",
-    ["OPTIONS_PREVIEW_HELP"] = "자세한 설명을 보려면 아무 컨트롤에나 마우스를 올리세요. 각 컨트롤 위 제목은 변경하는 항목을 설명하며, 외형 변경 사항은 이 미리보기에 즉시 적용됩니다.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] = "TacoTip이 기본 툴팁을 어디에 배치할지 선택하고, 사용자 지정 위치를 저장하는 이동 도구 흐름을 제어합니다.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "툴팁 위치 모드",
     ["OPTIONS_SECTION_TOOLTIP_BEHAVIOR"] = "툴팁 동작",

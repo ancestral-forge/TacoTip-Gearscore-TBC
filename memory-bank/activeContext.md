@@ -1,5 +1,21 @@
 # Active Context
 
+## 2026-08-21 - v0.7.2: TBC Classic Anniversary Dual-Spec Resolution & API Hardening
+
+- **TBC Anniversary Dual-Spec Resolution:** Fixed premature load-time capability check in `LibClassicInspector` that permanently blocked talent group 2 on TBC Anniversary clients.
+- **`C_SpecializationInfo` API Fallback:** Added wrapper fallback around `GetTalentInfo` with `C_SpecializationInfo.GetTalentInfo(query)` support across TBC Anniversary and SoD/Classic Era.
+- **Dynamic Spec Update Events:** Registered `PLAYER_TALENT_UPDATE` and `ACTIVE_TALENT_GROUP_CHANGED` on all dual-spec clients.
+- **Talent Point Summation Nil-Safety:** Added `or 0` guards for `select(5, GetTalentInfo(...))` across all talent aggregation routines.
+- **Version Bump:** Bumped version to `0.7.2` across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
+## 2026-08-20 - v0.7.1: Excision of Obsolete Preview Tooltip & Release Preparation
+
+- **Excised Obsolete Floating Preview Tooltip:** Removed `modernShowExampleTooltip`, `previewPane`, `previewHealthBar`, `previewPowerBar`, `previewAnchor`, `positionPreviewTopRight`, `clearPreviewVisuals`, and `TT:ApplyPreviewClassOverride`.
+- **Streamlined Options UI:** Removed over 40 redundant `modernShowExampleTooltip()` calls across all widget callbacks in `options.lua`. Options controls directly write config with zero unnecessary overhead.
+- **Locale Polish:** Cleaned up descriptions and removed dead `OPTIONS_PREVIEW_HEADER` and `OPTIONS_PREVIEW_HELP` across all 11 locale files (`enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `koKR`, `ptBR`, `ruRU`, `zhCN`, `zhTW`).
+- **Static Analysis & Testing:** Passed `luacheck .` with 0 warnings / 0 errors across all 21 files.
+- **Version Bump:** Bumped version to `0.7.1` across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
 ## 2026-07-19 - v0.6.2: Classic Era/SoD Guild Display & API Hardening
 
 - **Classic Era/SoD Guild Display Fallback:** Restructured the guild text display when `GetGuildInfo` returns nil (due to API restrictions on other player units on patch 1.15.8 Classic Era/SoD clients) by parsing `<Guild Name>` directly from the tooltip text lines.

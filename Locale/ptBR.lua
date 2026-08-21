@@ -151,9 +151,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Os movimentadores das sobreposições estão desbloqueados.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Os movimentadores das sobreposições estão bloqueados.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Ajuste os dados extras que o TacoTip adiciona às dicas de unidade e item e visualize o resultado sem sair da interface de opções.",
+    "Ajuste os dados extras que o TacoTip adiciona às dicas de unidade e item.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Escolha quanto detalhe o TacoTip mostra por padrão. Os estilos híbridos mostram o layout compacto por padrão e se expandem por completo enquanto Shift estiver pressionado — tanto no tooltip ao vivo quanto nesta pré-visualização.",
+    "Escolha quanto detalhe o TacoTip mostra por padrão. Os estilos híbridos mostram o layout compacto por padrão e se expandem por completo enquanto Shift estiver pressionado.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Conteúdo da dica de unidade",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "Dados da dica de item",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "Estilo visual",
@@ -211,9 +211,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Textura das barras de vida e recurso",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Usa uma única textura tanto para a barra de vida quanto para a barra de recurso. O menu suspenso mostra cada textura com uma barra completa e seu nome, e pacotes SharedMedia como Merfin Plus aparecem automaticamente quando registram mídia.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Visualização ao vivo",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Passe o mouse sobre qualquer controle para ver detalhes. Os títulos acima de cada controle descrevem o que você está alterando, e as mudanças de aparência são aplicadas imediatamente a esta visualização.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Escolha como o TacoTip posiciona a dica principal e controle o fluxo do movimentador usado para salvar um local personalizado.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Modo de posição da dica",

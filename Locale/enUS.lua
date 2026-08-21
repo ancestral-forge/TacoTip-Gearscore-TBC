@@ -146,9 +146,9 @@ local defaults = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Overlay drag movers are unlocked.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Overlay drag movers are locked.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Tune the extra data TacoTip adds to unit and item tooltips, and preview the result without leaving the options UI.",
+    "Tune the extra data TacoTip adds to unit and item tooltips.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Choose how much detail TacoTip shows by default. Hybrid styles show their compact layout by default and expand to full while Shift is held — in both the live tooltip and this preview.",
+    "Choose how much detail TacoTip shows by default. Hybrid styles show their compact layout by default and expand to full while Shift is held.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Unit tooltip content",
     ["OPTIONS_SHAMAN_BLUE"] = "Shaman Blue",
     ["OPTIONS_SHAMAN_BLUE_DESC"] = "Use blue instead of pink for Shaman class color on Classic Era / SoD.",
@@ -233,9 +233,6 @@ local defaults = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Health & power bar texture",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Use one texture for both the health bar and the power bar. The single dropdown previews each texture with a full bar strip plus its name, and SharedMedia packs such as Merfin Plus show up automatically when they register media.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Live Preview",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Hover any control for details. Titles above each control describe what you are changing, and appearance updates apply to this preview immediately.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Choose how TacoTip places the main tooltip and control the mover workflow used to save a custom location.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Tooltip position mode",

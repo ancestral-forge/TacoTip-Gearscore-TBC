@@ -298,6 +298,31 @@ local function RegisterTacoTipTests()
         cfg.tooltip_portrait_scale = savedScale
     end
 
+    function Portrait:SyncsAlphaWithTooltipFade()
+        local cfg = _G.TacoTipConfig
+        local saved3D = cfg.tooltip_portrait_3d
+        local savedPortrait = cfg.tooltip_portrait
+        cfg.tooltip_portrait = true
+        cfg.tooltip_portrait_3d = true
+
+        pc(TT.ApplyTooltipAppearance, TT, GameTooltip, "player")
+        local model = GameTooltip.TacoTipPortrait3D
+        if (model and model.GetScript) then
+            local onUpdate = model:GetScript("OnUpdate")
+            IsTrue(type(onUpdate) == "function", "3D portrait has OnUpdate alpha sync script")
+            if (onUpdate and GameTooltip.SetAlpha and model.SetAlpha and model.GetAlpha) then
+                GameTooltip:SetAlpha(0.5)
+                onUpdate(model, 0.016)
+                local currentAlpha = model:GetAlpha()
+                IsTrue(math.abs(currentAlpha - 0.5) < 0.01, "3D portrait alpha tracks tooltip alpha (0.5)")
+                GameTooltip:SetAlpha(1.0)
+            end
+        end
+
+        cfg.tooltip_portrait_3d = saved3D
+        cfg.tooltip_portrait = savedPortrait
+    end
+
     -- ============================================================
     -- TT-Guild: GetGuildInfo path (TBC works; SoD known-broken, noted)
     -- ============================================================

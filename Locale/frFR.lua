@@ -156,9 +156,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Les poignées de déplacement des superpositions sont déverrouillées.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Les poignées de déplacement des superpositions sont verrouillées.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Ajustez les données supplémentaires que TacoTip ajoute aux infobulles d'unité et d'objet, et prévisualisez le résultat sans quitter l'interface des options.",
+    "Ajustez les données supplémentaires que TacoTip ajoute aux infobulles d'unité et d'objet.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Choisissez le niveau de détail affiché par TacoTip par défaut. Les styles hybrides affichent leur disposition compacte par défaut et s'étendent au complet tant que Maj est maintenue — à la fois dans le tooltip en jeu et dans cet aperçu.",
+    "Choisissez le niveau de détail affiché par TacoTip par défaut. Les styles hybrides affichent leur disposition compacte par défaut et s'étendent au complet tant que Maj est maintenue.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Contenu des infobulles d'unité",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "Données des infobulles d'objet",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "Style visuel",
@@ -217,9 +217,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Texture des barres de vie et de puissance",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Utilise une seule texture pour la barre de vie et la barre de puissance. Le menu déroulant prévisualise chaque texture avec une barre complète et son nom, et les packs SharedMedia tels que Merfin Plus apparaissent automatiquement lorsqu'ils enregistrent des médias.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Aperçu en direct",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Survolez un contrôle pour voir les détails. Les titres au-dessus de chaque contrôle décrivent ce que vous modifiez, et les changements d'apparence s'appliquent immédiatement à cet aperçu.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Choisissez comment TacoTip place l'infobulle principale et contrôlez le processus de la poignée de déplacement utilisée pour enregistrer une position personnalisée.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Mode de positionnement de l'infobulle",

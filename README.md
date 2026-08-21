@@ -1,6 +1,7 @@
-# TacoTip Gearscore TBC
+# TacoTip - Gearscore & iLvl | TBC - Era - SoD |
 
-TacoTip Gearscore TBC is a revived fork of TacoTip for Classic-era World of Warcraft.
+TacoTip is a fully-featured tooltip enhancement and character inspection addon for World of Warcraft: Classic. It restores and polishes classic TacoTip features while adding modern UI and quality-of-life improvements for current players across Titanforge Wrath, TBC Anniversary, Classic Era, and Season of Discovery.
+
 The original addon stopped working for TBC Classic, so this fork exists to make it work again, keep the useful features alive, and give the project room for future improvements.
 
 > This description is written in Markdown for the CurseForge project page.
@@ -10,7 +11,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 - 支持客户端 / 支援用戶端：`1.15.9 (11509)`、`2.5.6 (20506)`、`3.80.1 (Titanforge)`
 - 主要功能 / 主要功能：提示增强、GearScore、平均装等 / 平均物品等級、双天赋 / 雙專精、公会阶级 / 公會階級（`<Guild> Rank`）、放大 3D 角色头像、萨满职业蓝、角色与观察面板信息
 - 打开设置 / 開啟設定：`/tacotip` 或 `/taco`
-- 语言 / 語言：默认跟随客户端语言，全 11 种语言 100% 完整翻译（263/263 文本键）；主页面也提供语言下拉选单 / 下拉選單。
+- 语言 / 語言：默认跟随客户端语言，全 11 种语言 100% 完整翻译（261/261 文本键）；主页面也提供语言下拉选单 / 下拉選單。
 
 ## At a glance
 
@@ -22,7 +23,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.0` |
+| Public version | `v0.7.2` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -37,7 +38,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 
 | Area | Features |
 | --- | --- |
-| Tooltips | Full / Compact / Mini styles, live preview, hostile mob difficulty colors, target display, custom positioning, mouse anchoring, spell anchoring, portrait/font/theme controls |
+| Tooltips | Full / Compact / Mini styles, hostile mob difficulty colors, target display, custom positioning, mouse anchoring, spell anchoring, portrait/font/theme controls |
 | Player inspection data | GearScore, average item level, specialization names with per-spec icons, optional Pawn scores, glyph data, achievement data on Wrath |
 | Character and inspect frames | GearScore and iLvl display with movable labels plus numeric X/Y offset controls |
 | Quality of life | Instant fade, titles, guild names/ranks, PvP/team icons, class-tinted tooltip styling, saved anchor-aware mover reset |
@@ -51,13 +52,33 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **`<Guild> Rank` Default Style** | Guild rank display enabled by default (`show_guild_rank = true`) with `<GuildName> RankName` formatting (`guild_rank_alt_style = true`). |
 | **Custom Dropdown Media Picker** | Scrollable modal popup UI (`TacoTipMediaPickerFrame`) with statusbar texture strip previews, real 9-slice sliced borders, scrollbar, and ESC/click-outside auto-dismiss. |
 | **Shaman Blue Default Color** | Shamans render in Shaman Blue (`#0070DE`) on Classic Era / SoD by default, with an options checkbox to switch to Classic pink if preferred. |
-| **Tooltips Borders & Slicing** | Class-colored borders use Blizzard's native backdrop system, displaying proper sliced corner/edge borders with customizable edge size (default 20px). |
-| **Dual-Spec Support (Era & SoD)** | Both active and secondary talent specs display on inspection (inactive spec dimmed at 60% opacity) across Classic Era, SoD, and TBC Anniversary. |
+| **Tooltips Borders & Slicing** | Class-colored borders use Blizzard's native backdrop system, displaying proper sliced corner/edge borders with customizable edge size (default 14px). |
+| **Dual-Spec Support (Era, SoD & TBC Anniversary)** | Both active and secondary talent specs display on inspection (inactive spec dimmed at 60% opacity) across Classic Era, Season of Discovery, TBC Classic Anniversary, and WotLK. |
 | **Hostile Level Colors** | Hostile NPC levels in tooltips use Blizzard difficulty coloring (gray / green / yellow / orange / red) for instant danger assessment. |
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.7.0 (Recent v0.7.x Updates)
+## What's new in v0.7.2 (Recent v0.7.x Updates)
+
+| Feature / Fix | Description |
+| --- | --- |
+| **TBC Anniversary Dual-Spec Fix** | Resolved an issue where dual specialization was not showing on TBC Classic Anniversary due to a premature file-load capability check. Enabled full secondary talent group inspection and caching on TBC Anniversary clients. |
+| **`C_SpecializationInfo` API Fallback** | Added robust fallback to `C_SpecializationInfo.GetTalentInfo` query structs, matching official Blizzard FrameXML signatures across TBC Anniversary and Classic Era/SoD clients. |
+| **Dual-Spec Tooltip Alignment** | Fixed secondary talent line indentation in compact mode using a localized zero-alpha prefix, ensuring pixel-perfect vertical alignment between primary and secondary talent icons. |
+| **3D Portrait Real-Time Alpha Fade** | Synchronized 3D `PlayerModel` alpha with `GameTooltip:GetAlpha()` in real-time via `OnUpdate` frame tracking so portraits smoothly fade out in lockstep with tooltip text and backdrops. |
+| **3D Portrait Lifecycle & Reset Safety** | Hardened `clearTooltipVisuals` with `ClearModel()` GPU mesh cleanup and `SetAlpha(1.0)` restoration, guaranteeing instant, clean resets on rapid mouse movements across map nodes, spells, and action bars. |
+| **Dead Code Excision** | Removed stale `TacoTipEliteFrame` checks and comments. |
+| **100% Locale Parity & Clean Linting** | Verified 100% key parity across all 11 languages (261/261 keys) and 0 warnings / 0 errors in static analysis across all 21 files. |
+
+## What's new in v0.7.1
+
+| Feature / Fix | Description |
+| --- | --- |
+| **Removed Obsolete Preview Tooltip & Dead Code** | Fully excised the broken floating options preview tooltip and over 40 redundant preview update hooks. Options UI controls now update addon settings with zero unnecessary overhead. |
+| **Options UI & Layout Cleanup** | Streamlined options lifecycle handlers, eliminated stale references, and updated tooltip descriptions across all 11 locale files. |
+| **Zero Static Analysis Warnings** | Passed 100% clean `luacheck` static analysis across all 21 addon files with 0 warnings and 0 errors. |
+
+## What's new in v0.7.0
 
 | Feature / Fix | Description |
 | --- | --- |
@@ -65,7 +86,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Accurate Unit Resolution** | `UPDATE_MOUSEOVER_UNIT` and event handlers validate `tooltip:IsUnit()` to ensure non-unit map tooltips are never falsely hidden or overwritten with stale unit data. |
 | **Enlarged 3D Player Portrait** | Increased base 3D portrait dimensions to **60×80** (width 60px, height 80px) to match full multi-line tooltip height. |
 | **Updated Feature Defaults** | Enabled Guild Rank (`<Guild> Rank`), Item GearScore, Faction Icon, Group Role Icon, and Shaman Blue by default. |
-| **Default Tooltip Border** | Set default border texture to `"Tooltip enlarged"` (`20px` edge size) with dynamic LibSharedMedia-3.0 resolution. |
+| **Default Tooltip Border** | Set default border texture to `"Tooltip enlarged"` (`14px` edge size) with dynamic LibSharedMedia-3.0 resolution. |
 | **Mover Drag & TOPLEFT Default** | Mover handle defaults to `TOPLEFT`; live drag re-anchoring keeps `GameTooltip` continuously attached during drag. |
 | **Scrollable Media Picker** | Upgraded media dropdowns to a fixed-height scrollable modal popup UI (`TacoTipMediaPickerFrame`). |
 | **100% Locale Parity** | Native translations across all 11 locale files with key parity across 263 localized strings. |
@@ -74,7 +95,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 
 | Area | What you get |
 | --- | --- |
-| Tooltip styles | Full / Compact / Mini, live preview, hostile-mob difficulty colors, custom positioning, mouse + spell anchoring |
+| Tooltip styles | Full / Compact / Mini, hostile-mob difficulty colors, custom positioning, mouse + spell anchoring |
 | Player data | GearScore, average item level, dual-spec names with per-spec icons, optional Pawn scores, glyph + achievement data (Wrath) |
 | Character & Inspect frames | GearScore / iLvl overlays with movable labels and X/Y offset controls |
 | Quality of life | Instant fade, titles, guild names/ranks, PvP/team icons, class-tinted styling, saved-anchor-aware mover reset |

@@ -3,7 +3,7 @@
 ## Module split
 
 - `main.lua`: runtime bootstrap, tooltip hooks, refresh callbacks, mover and anchoring logic, and item tooltip handling.
-- `options.lua`: defaults, config bootstrap, settings panel, UI controls, and preview tooltip rendering.
+- `options.lua`: defaults, config bootstrap, settings panel, and UI controls.
 - `gearscore.lua`: GearScore and item-level calculations plus item quality coloring.
 - `pawn.lua`: optional Pawn integration and score lookup logic.
 - `Locale/*.lua`: localized strings and labels.

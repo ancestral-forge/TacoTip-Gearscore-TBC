@@ -157,9 +157,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Los ajustadores de superposición están desbloqueados.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Los ajustadores de superposición están bloqueados.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Ajusta los datos extra que TacoTip añade a los tooltips de unidad y objeto, y previsualiza el resultado sin salir de la interfaz de opciones.",
+    "Ajusta los datos extra que TacoTip añade a los tooltips de unidad y objeto.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Elige cuántos detalles muestra TacoTip por defecto. Los estilos híbridos muestran su diseño compacto por defecto y se amplían a completo mientras mantengas pulsado Mayús, tanto en el tooltip en vivo como en esta vista previa.",
+    "Elige cuántos detalles muestra TacoTip por defecto. Los estilos híbridos muestran su diseño compacto por defecto y se amplían a completo mientras mantengas pulsado Mayús.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Contenido del tooltip de unidad",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "Datos del tooltip de objeto",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "Estilo visual",
@@ -217,9 +217,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Textura de barras de salud y poder",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Usa una única textura tanto para la barra de salud como para la de poder. El menú desplegable previsualiza cada textura con una barra completa y su nombre, y los paquetes SharedMedia como Merfin Plus aparecen automáticamente cuando registran medios.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Vista previa en vivo",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Pasa el ratón sobre cualquier control para ver detalles. Los títulos sobre cada control describen lo que estás cambiando, y los cambios de apariencia se aplican inmediatamente a esta vista previa.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Elige cómo coloca TacoTip el tooltip principal y controla el flujo del manejador de movimiento usado para guardar una ubicación personalizada.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Modo de posición del tooltip",

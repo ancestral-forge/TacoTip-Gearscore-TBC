@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.0"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.2"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or
     (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
@@ -27,7 +27,6 @@ local isPawnLoaded = (_G.PawnClassicLastUpdatedVersion and _G.PawnClassicLastUpd
 local Detours = LibStub("LibDetours-1.0")
 local CI = LibStub("LibClassicInspector")
 
-local GearScore = _G.TT_GS
 local L = _G.TACOTIP_LOCALE
 local TT = _G[addOnName]
 
@@ -35,9 +34,6 @@ if (not TT) then
     TT = {}
     rawset(_G, addOnName, TT)
 end
-
-local HORDE_ICON = "|TInterface\\TargetingFrame\\UI-PVP-HORDE:16:16:-2:0:64:64:0:38:0:38|t"
-local PVP_FLAG_ICON = "|TInterface\\GossipFrame\\BattleMasterGossipIcon:0|t"
 
 -- Safe-call wrapper. Routes errors through Blizzard's geterrorhandler()
 -- global so they are captured by error display addons (BugSack, !Swatter,
@@ -567,17 +563,12 @@ local modernOptionsState = {
     controls = {},
     pages = {},
     rootSummary = nil,
-    preview = nil,
-    previewHealthBar = nil,
-    previewPowerBar = nil,
-    previewAnchor = nil,
     offsetEditors = {},
     offsetSliders = {}
 }
 
 local modernGetConfig
 local modernRefreshLockPositionToggle
-local modernShowExampleTooltip
 local modernWidgetId = 0
 local CLIENT_DEFAULT_LOCALE_VALUE = "__client__"
 
@@ -1518,197 +1509,6 @@ local function refreshOverlayPositions()
     if (TT.RefreshInspectFrame and InspectFrame and InspectFrame:IsShown()) then TT:RefreshInspectFrame() end
 end
 
-modernShowExampleTooltip = function()
-    xpcall(function()
-        local tooltip = modernOptionsState.preview
-        local previewAnchor = modernOptionsState.previewAnchor
-        if (not tooltip or not previewAnchor) then
-            return
-        end
-
-        -- Hide + SetOwner + ClearAllPoints ensures a clean layout state
-        -- before re-populating.  Re-layout happens on the next Show().
-        tooltip:Hide()
-        tooltip:SetOwner(previewAnchor, "ANCHOR_NONE")
-        tooltip:ClearLines()
-        tooltip:ClearAllPoints()
-        tooltip:SetPoint("TOPLEFT", previewAnchor, "TOPLEFT", 0, 0)
-
-        local classc = CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS["ROGUE"] or RAID_CLASS_COLORS["ROGUE"]
-        local name_r = TacoTipConfig.color_class and classc and classc.r or 0
-        local name_g = TacoTipConfig.color_class and classc and classc.g or 0.6
-        local name_b = TacoTipConfig.color_class and classc and classc.b or 0.1
-        local playerTitle = TacoTipConfig.show_titles and L[" the Kingslayer"] or ""
-        local iconSuffix = ""
-        if (TacoTipConfig.show_team) then
-            iconSuffix = iconSuffix .. " " .. HORDE_ICON
-        end
-        if (TacoTipConfig.show_pvp_icon) then
-            iconSuffix = iconSuffix .. " " .. PVP_FLAG_ICON
-        end
-        if (TacoTipConfig.show_class_icon) then
-            iconSuffix = iconSuffix .. " " .. (TT and TT.GetClassIconMarkup and TT:GetClassIconMarkup("ROGUE") or "")
-        end
-        if (TacoTipConfig.show_role_icon) then
-            iconSuffix = iconSuffix .. " |TInterface\\GroupFrame\\UI-Group-DPSIcon:18:18:0:0:16:16:0:16:0:16|t"
-        end
-        tooltip:AddLine(string.format("|cFF%02x%02x%02xAcidBomb%s%s|r", name_r * 255, name_g * 255, name_b * 255,
-            playerTitle, iconSuffix))
-
-        if (TacoTipConfig.show_guild_name) then
-            if (TacoTipConfig.show_guild_rank) then
-                if (TacoTipConfig.guild_rank_alt_style) then
-                    tooltip:AddLine("|cFF40FB40<Drunken Wrath> Officer|r")
-                else
-                    local guildTag = "|cFF40FB40<Drunken Wrath>|r"
-                    local rankTag = string.format("|cff%02x%02x%02xOfficer|r", HIGHLIGHT_FONT_COLOR.r * 255,
-                        HIGHLIGHT_FONT_COLOR.g * 255, HIGHLIGHT_FONT_COLOR.b * 255)
-                    tooltip:AddLine(string.format(L["FORMAT_GUILD_RANK_1"], guildTag, rankTag))
-                end
-            else
-                tooltip:AddLine("|cFF40FB40<Drunken Wrath>|r")
-            end
-        end
-
-        if (TacoTipConfig.color_class) then
-            tooltip:AddLine(
-                string.format("%s 60 %s |cFF%02x%02x%02x%s|r (%s)", L["Level"], L["Undead"], name_r * 255, name_g * 255,
-                    name_b * 255, LOCALIZED_CLASS_NAMES_MALE["ROGUE"], L["Player"]), 1, 1, 1)
-        else
-            tooltip:AddLine(
-                string.format("%s 60 %s %s (%s)", L["Level"], L["Undead"], LOCALIZED_CLASS_NAMES_MALE["ROGUE"],
-                    L["Player"]),
-                1, 1, 1)
-        end
-
-        if (TacoTipConfig.show_realm) then
-            tooltip:AddLine("|cFF808080" .. (L["REALM"] or "Realm") .. ": " .. GetRealmName() .. "|r", 1, 1, 1)
-        end
-
-        if (not TacoTipConfig.show_pvp_icon) then
-            tooltip:AddLine("PvP", 1, 1, 1)
-        end
-
-        if (TacoTipConfig.show_honor_rank) then
-            tooltip:AddLine((L["Honor Rank"] or "Honor Rank: ") .. (L["RANK_TITLE"] or "Champion"), 1, 1, 1)
-        end
-
-        -- Preview reflects the configured style. Hybrid styles (2/4) show their
-        -- default COMPACT/MINI layout, but expand to full while Shift is held —
-        -- matching the live tooltip. Every other setting drives the preview directly.
-        -- All other appearance/content is driven purely by settings.
-        local wideStyle = (TacoTipConfig.tip_style == 1) or
-            ((TacoTipConfig.tip_style == 2 or TacoTipConfig.tip_style == 4) and IsShiftKeyDown())
-        local miniStyle = (not wideStyle and (TacoTipConfig.tip_style == 4 or TacoTipConfig.tip_style == 5))
-
-        if (TacoTipConfig.show_separators) then
-            tooltip:AddLine(" ")
-        end
-
-        if (TacoTipConfig.show_target) then
-            if (wideStyle) then
-                tooltip:AddDoubleLine(L["Target"] .. ":", L["None"], NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g,
-                    NORMAL_FONT_COLOR.b, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b)
-            else
-                tooltip:AddLine(L["Target"] .. ": |cFF808080" .. L["None"] .. "|r")
-            end
-        end
-
-        if (TacoTipConfig.show_talents) then
-            local primarySpecText = (TT.GetFormattedSpecializationText and TT:GetFormattedSpecializationText("ROGUE", 1, 20, 31, 0)) or
-                (CI:GetSpecializationName("ROGUE", 1, true) .. " [20/31/0]")
-            local secondarySpecText = (TT.GetFormattedSpecializationText and TT:GetFormattedSpecializationText("ROGUE", 3, 5, 0, 46)) or
-                (CI:GetSpecializationName("ROGUE", 3, true) .. " [5/0/46]")
-            if (wideStyle) then
-                tooltip:AddDoubleLine(L["Talents"] .. ":", primarySpecText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g,
-                    NORMAL_FONT_COLOR.b, 1, 1, 1)
-                tooltip:AddDoubleLine(" ", secondarySpecText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g,
-                    NORMAL_FONT_COLOR.b, 1, 1, 1)
-            else
-                tooltip:AddLine(L["Talents"] .. ": " .. primarySpecText)
-            end
-        end
-
-        local miniText = ""
-        if (TacoTipConfig.show_gs_player) then
-            local gs_r, gs_g, gs_b = GearScore:GetQuality(2517)
-            if (wideStyle) then
-                tooltip:AddDoubleLine("GearScore: 2517", "(iLvl: 79)", gs_r, gs_g, gs_b, gs_r, gs_g, gs_b)
-            elseif (miniStyle) then
-                miniText = string.format("|cFF%02x%02x%02xGS: 2517  L: 79|r  ", gs_r * 255, gs_g * 255, gs_b * 255)
-            else
-                tooltip:AddLine("GearScore: 2517", gs_r, gs_g, gs_b)
-                if (not TacoTipConfig.show_ilvl_inline) then
-                    tooltip:AddLine("iLvl: 79", gs_r, gs_g, gs_b)
-                end
-            end
-        end
-
-        if (isPawnLoaded and TacoTipConfig.show_pawn_player) then
-            local pcOk, pcResult = pcall(PawnGetScaleColor, "\"Classic\":ROGUE1", true)
-            local specColor = pcOk and pcResult or "|cffffffff"
-            if (wideStyle) then
-                tooltip:AddDoubleLine(string.format("Pawn: %s456.78|r", specColor),
-                    string.format("%s(%s)|r", specColor, CI:GetSpecializationName("ROGUE", 1, true)), 1, 1, 1, 1, 1, 1)
-            elseif (miniStyle) then
-                miniText = miniText .. string.format("P: %s456.8|r", specColor)
-            else
-                tooltip:AddLine(
-                    string.format("Pawn: %s456.78 (%s)|r", specColor, CI:GetSpecializationName("ROGUE", 1, true)), 1, 1,
-                    1)
-            end
-        end
-
-        if (miniText ~= "") then
-            tooltip:AddLine(miniText, 1, 1, 1)
-        end
-
-        local maxW = TacoTipConfig.tooltip_max_width or 0
-        if (maxW > 0 and tooltip.SetMaxWidth) then
-            tooltip:SetMaxWidth(maxW)
-        elseif (tooltip.SetMaxWidth) then
-            tooltip:SetMaxWidth(0)
-        end
-
-        tooltip:Show()
-
-        if (TT and TT.ApplyTooltipAppearance) then
-            TT:ApplyTooltipAppearance(tooltip, "player")
-            -- Preview is a FIXED example: the mannequin is always a max-level
-            -- ROGUE named AcidBomb. Force the class-colored border/background to
-            -- ROGUE so it matches the mock identity (otherwise the real player's
-            -- class would tint the border and clash with the ROGUE name).
-            if (TT.ApplyPreviewClassOverride) then
-                TT:ApplyPreviewClassOverride(tooltip, "ROGUE")
-            end
-        end
-
-        if (modernOptionsState.previewHealthBar) then
-            local barTexture = TacoTipConfig.tooltip_bar_texture or
-                "Interface\\TargetingFrame\\UI-TargetingFrame-BarFill"
-            modernOptionsState.previewHealthBar:SetStatusBarTexture(barTexture)
-            modernOptionsState.previewPowerBar:SetStatusBarTexture(barTexture)
-            if (TacoTipConfig.show_hp_bar) then
-                modernOptionsState.previewHealthBar:Show()
-                modernOptionsState.previewPowerBar:SetPoint("TOPLEFT", tooltip, "BOTTOMLEFT", 2, -9)
-                modernOptionsState.previewPowerBar:SetPoint("TOPRIGHT", tooltip, "BOTTOMRIGHT", -2, -9)
-            else
-                modernOptionsState.previewHealthBar:Hide()
-                -- No health bar: tuck the power bar directly under the tooltip
-                -- (1px gap) instead of leaving an 8px dead stub.
-                modernOptionsState.previewPowerBar:SetPoint("TOPLEFT", tooltip, "BOTTOMLEFT", 2, -1)
-                modernOptionsState.previewPowerBar:SetPoint("TOPRIGHT", tooltip, "BOTTOMRIGHT", -2, -1)
-            end
-
-            if (TacoTipConfig.show_power_bar) then
-                modernOptionsState.previewPowerBar:Show()
-            else
-                modernOptionsState.previewPowerBar:Hide()
-            end
-        end
-    end, geterrorhandler()) -- xpcall
-end
-
 local function buildRootPage()
     if (modernOptionsState.pages.rootBuilt) then
         return
@@ -1769,7 +1569,7 @@ local function buildRootPage()
 
     controls.rootStyleChoice = createOptionsDropdown(panel, nil, L["Tooltip Style"],
         L["OPTIONS_TOOLTIP_STYLE_DESC"] or
-        "Choose how much detail TacoTip shows by default. The preview reflects the selected style's default layout.",
+        "Choose how much detail TacoTip shows by default.",
         modernStyleOptions, function(value)
             TacoTipConfig.tip_style = value
             if (TT and TT.RefreshOptionsUI) then
@@ -1863,35 +1663,6 @@ local function buildRootPage()
     modernOptionsState.pages.rootBuilt = true
 end
 
--- Position the floating preview in the TOP-RIGHT corner of the screen, inset
--- from the edge so it never sits under the Blizzard Settings X. This is
--- screen-relative (uses UIParent dimensions) so it stays on-screen at any
--- resolution / windowed size. The preview keeps its natural size so it always
--- matches the player's real tooltip.
-local function positionPreviewTopRight()
-    local pp = modernOptionsState.previewPane
-    if (not pp) then return end
-    local inset = 16         -- gap from the screen edge
-    local belowTitleBar = 48 -- drop below the Settings title/X bar
-    pp:ClearAllPoints()
-    pp:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -(inset), -(belowTitleBar))
-end
-
-local function clearPreviewVisuals()
-    local preview = modernOptionsState.preview
-    if (not preview) then return end
-    if (preview.TacoTipPortrait3D) then
-        preview.TacoTipPortrait3D:ClearModel()
-        preview.TacoTipPortrait3D:Hide()
-    end
-    if (preview.TacoTipPortrait) then
-        preview.TacoTipPortrait:Hide()
-    end
-    if (preview.TacoTipPlayerClassColor) then
-        preview.TacoTipPlayerClassColor = nil
-    end
-end
-
 local function buildTooltipsPage()
     if (modernOptionsState.pages.tooltipsBuilt) then
         return
@@ -1942,10 +1713,9 @@ local function buildTooltipsPage()
     local controls = modernOptionsState.controls
     controls.styleChoice = createOptionsDropdown(content, nil, L["Tooltip Style"],
         L["OPTIONS_TOOLTIP_STYLE_DESC"] or
-        "Choose how much detail TacoTip shows by default. The preview reflects the selected style's default layout.",
+        "Choose how much detail TacoTip shows by default.",
         modernStyleOptions, function(value)
             TacoTipConfig.tip_style = value
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.styleChoice, builder.y, 12)
 
@@ -1956,25 +1726,26 @@ local function buildTooltipsPage()
 
     controls.useClassColors = createOptionsCheckbox(content, nil, L["Class Color"], L["Color class names in tooltips"],
         function(_, value)
-            TacoTipConfig.color_class = value; modernShowExampleTooltip()
+            TacoTipConfig.color_class = value
         end)
     controls.useClassColors:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.shamanBlue = createOptionsCheckbox(content, nil, L["OPTIONS_SHAMAN_BLUE"] or "Shaman Blue",
         L["OPTIONS_SHAMAN_BLUE_DESC"] or "Use blue instead of pink for Shaman class color on Classic Era / SoD.",
         function(_, value)
-            TacoTipConfig.shaman_blue = value; modernShowExampleTooltip()
+            TacoTipConfig.shaman_blue = value
         end)
     controls.shamanBlue:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
 
     controls.showTitles = createOptionsCheckbox(content, nil, L["Title"], L["Show player's title in tooltips"],
         function(_, value)
-            TacoTipConfig.show_titles = value; modernShowExampleTooltip()
+            TacoTipConfig.show_titles = value
         end)
     controls.showTitles:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showGuildNames = createOptionsCheckbox(content, nil, L["Guild Name"], L["Show guild name in tooltips"],
         function(_, value)
-            TacoTipConfig.show_guild_name = value; modernGetConfig(); modernShowExampleTooltip()
+            TacoTipConfig.show_guild_name = value
+            modernGetConfig()
         end)
     controls.showGuildNames:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -1983,7 +1754,6 @@ local function buildTooltipsPage()
         function(_, value)
             TacoTipConfig.show_guild_rank = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     controls.showGuildRanks:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     builder.y = builder.y - 30
@@ -1995,19 +1765,18 @@ local function buildTooltipsPage()
             { value = 2, text = L["OPTIONS_GUILD_STYLE_TWO"] or string.format("<%s> (%s)", L["Guild"], L["Rank"]) }
         }, function(value)
             TacoTipConfig.guild_rank_alt_style = (value == 2)
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.guildRankStyleChoice, builder.y)
 
     controls.showTalents = createOptionsCheckbox(content, nil, L["Talents"],
         L["Show talents and specialization in tooltips"],
         function(_, value)
-            TacoTipConfig.show_talents = value; modernShowExampleTooltip()
+            TacoTipConfig.show_talents = value
         end)
     controls.showTalents:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showTarget = createOptionsCheckbox(content, nil, L["Target"], L["Show unit's target in tooltips"],
         function(_, value)
-            TacoTipConfig.show_target = value; modernShowExampleTooltip()
+            TacoTipConfig.show_target = value
         end)
     controls.showTarget:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2016,14 +1785,14 @@ local function buildTooltipsPage()
         L["OPTIONS_SHOW_PLAYER_GS_DESC"] or
         "Adds GearScore to player tooltips. Wide and mini layouts also show average item level on that line.",
         function(_, value)
-            TacoTipConfig.show_gs_player = value; modernShowExampleTooltip()
+            TacoTipConfig.show_gs_player = value
         end)
     controls.gearScorePlayer:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.pawnScorePlayer = createOptionsCheckbox(content, nil, L["OPTIONS_SHOW_PLAYER_PAWN"] or "Show Pawn scores",
         L["OPTIONS_SHOW_PLAYER_PAWN_DESC"] or
         "Adds Pawn scores for inspected players when Pawn is installed. This may add extra item-cache work.",
         function(_, value)
-            TacoTipConfig.show_pawn_player = value; modernShowExampleTooltip()
+            TacoTipConfig.show_pawn_player = value
         end)
     controls.pawnScorePlayer:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2031,13 +1800,13 @@ local function buildTooltipsPage()
     controls.showTeam = createOptionsCheckbox(content, nil, L["Faction Icon"],
         L["Show player's faction icon (Horde/Alliance) in tooltips"],
         function(_, value)
-            TacoTipConfig.show_team = value; modernShowExampleTooltip()
+            TacoTipConfig.show_team = value
         end)
     controls.showTeam:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showClassIcon = createOptionsCheckbox(content, nil, L["Class Icon"] or "Class Icon",
         "Show class icon badge at the top-right corner of player tooltips.",
         function(_, value)
-            TacoTipConfig.show_class_icon = value; modernShowExampleTooltip()
+            TacoTipConfig.show_class_icon = value
         end)
     controls.showClassIcon:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2048,7 +1817,6 @@ local function buildTooltipsPage()
         "Tint the tooltip border with the player's class color when the tooltip is showing a player unit.",
         function(_, value)
             TacoTipConfig.tooltip_border_use_class = value
-            modernShowExampleTooltip()
         end)
     controls.classColoredBorderToggle:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     builder.y = builder.y - 30
@@ -2056,13 +1824,13 @@ local function buildTooltipsPage()
     controls.showPVPIcon = createOptionsCheckbox(content, nil, L["PVP Icon"],
         L["Show player's pvp flag status as icon instead of text"],
         function(_, value)
-            TacoTipConfig.show_pvp_icon = value; modernShowExampleTooltip()
+            TacoTipConfig.show_pvp_icon = value
         end)
     controls.showPVPIcon:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showHealthBar = createOptionsCheckbox(content, nil, L["Health Bar"],
         L["Show unit's health bar under tooltip"],
         function(_, value)
-            TacoTipConfig.show_hp_bar = value; modernShowExampleTooltip()
+            TacoTipConfig.show_hp_bar = value
         end)
     controls.showHealthBar:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2071,14 +1839,12 @@ local function buildTooltipsPage()
         L["OPTIONS_SHOW_HONOR_RANK_DESC"] or "Show the player's PvP rank title (Knight, Centurion, etc.) on the tooltip.",
         function(_, value)
             TacoTipConfig.show_honor_rank = value
-            modernShowExampleTooltip()
         end)
     controls.showHonorRank:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showRoleIcon = createOptionsCheckbox(content, nil, L["OPTIONS_SHOW_ROLE_ICON"] or "Show group role icon",
         L["OPTIONS_SHOW_ROLE_ICON_DESC"] or
         "Show Tank/Healer/DPS role icons on the name line for party and raid members.", function(_, value)
             TacoTipConfig.show_role_icon = value
-            modernShowExampleTooltip()
         end)
     controls.showRoleIcon:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2087,21 +1853,19 @@ local function buildTooltipsPage()
         L["OPTIONS_SHOW_REALM_DESC"] or "Show the realm name for players from other servers (cross-realm).",
         function(_, value)
             TacoTipConfig.show_realm = value
-            modernShowExampleTooltip()
         end)
     controls.showRealm:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.showIlvlInline = createOptionsCheckbox(content, nil, L["OPTIONS_SHOW_ILVL_INLINE"] or "iLvl on name line",
         L["OPTIONS_SHOW_ILVL_INLINE_DESC"] or
         "Show average item level next to the player's name instead of on a separate line.", function(_, value)
             TacoTipConfig.show_ilvl_inline = value
-            modernShowExampleTooltip()
         end)
     controls.showIlvlInline:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
 
     controls.showPowerBar = createOptionsCheckbox(content, nil, L["Power Bar"], L["Show unit's power bar under tooltip"],
         function(_, value)
-            TacoTipConfig.show_power_bar = value; modernShowExampleTooltip()
+            TacoTipConfig.show_power_bar = value
             -- Live sync: apply the power bar visibility change to the current tooltip immediately
             if (GameTooltip and GameTooltip:IsShown() and TT.ApplyTooltipAppearance) then
                 local _, unit = GameTooltip:GetUnit()
@@ -2125,7 +1889,8 @@ local function buildTooltipsPage()
     controls.gearScoreItems = createOptionsCheckbox(content, nil, L["Show Item GearScore"],
         L["Show GearScore in item tooltips"],
         function(_, value)
-            TacoTipConfig.show_gs_items = value; modernGetConfig()
+            TacoTipConfig.show_gs_items = value
+            modernGetConfig()
         end)
     controls.gearScoreItems:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 30
@@ -2153,7 +1918,6 @@ local function buildTooltipsPage()
         "Adds a subtle class-colored tint behind player tooltips. Use the alpha slider to keep it understated.",
         function(_, value)
             TacoTipConfig.tooltip_background_use_class = value
-            modernShowExampleTooltip()
         end)
     controls.tooltipBackgroundUseClass:SetPoint("TOPLEFT", content, "TOPLEFT", 234, builder.y)
     builder.y = builder.y - 34
@@ -2166,7 +1930,6 @@ local function buildTooltipsPage()
             TacoTipConfig.tooltip_border_color_r = r
             TacoTipConfig.tooltip_border_color_g = g
             TacoTipConfig.tooltip_border_color_b = b
-            modernShowExampleTooltip()
         end)
     controls.tooltipBorderColor:SetPoint("TOPLEFT", content, "TOPLEFT", 16, builder.y)
 
@@ -2178,7 +1941,6 @@ local function buildTooltipsPage()
             TacoTipConfig.tooltip_background_color_r = r
             TacoTipConfig.tooltip_background_color_g = g
             TacoTipConfig.tooltip_background_color_b = b
-            modernShowExampleTooltip()
         end)
     controls.tooltipBackgroundColor:SetPoint("TOPLEFT", content, "TOPLEFT", 236, builder.y)
     builder.y = builder.y - 118
@@ -2187,7 +1949,6 @@ local function buildTooltipsPage()
         L["OPTIONS_BORDER_ALPHA_DESC"] or
         "Adjust how strong the tooltip border tint appears. Lower values keep class coloring subtle.", function(value)
             TacoTipConfig.tooltip_border_alpha = value / 100
-            modernShowExampleTooltip()
         end, 0, 100, 1)
     controls.tooltipBorderAlpha:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.tooltipBorderAlpha.valueText:SetPoint("LEFT", controls.tooltipBorderAlpha, "RIGHT", 8, 0)
@@ -2198,7 +1959,6 @@ local function buildTooltipsPage()
         "Control how thick the tooltip border appears. Higher values create a wider, more prominent border edge. Default is 14px.",
         function(value)
             TacoTipConfig.tooltip_border_edge_size = value
-            modernShowExampleTooltip()
         end, 4, 48, 1)
     controls.tooltipBorderEdgeSize:SetPoint("TOPLEFT", content, "TOPLEFT", 214, builder.y)
     controls.tooltipBorderEdgeSize.valueText:SetPoint("LEFT", controls.tooltipBorderEdgeSize, "RIGHT", 8, 0)
@@ -2209,7 +1969,6 @@ local function buildTooltipsPage()
         L["OPTIONS_BACKGROUND_ALPHA_DESC"] or
         "Adjust how strong the tooltip background tint appears. Lower values keep the tooltip readable.", function(value)
             TacoTipConfig.tooltip_background_alpha = value / 100
-            modernShowExampleTooltip()
         end, 0, 100, 1)
     controls.tooltipBackgroundAlpha:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.tooltipBackgroundAlpha.valueText:SetPoint("LEFT", controls.tooltipBackgroundAlpha, "RIGHT", 8, 0)
@@ -2222,7 +1981,6 @@ local function buildTooltipsPage()
         TT:GetTooltipBackgroundChoices(), function(value)
             TacoTipConfig.tooltip_background_texture = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.tooltipBackgroundTextureChoice, builder.y)
 
@@ -2233,7 +1991,6 @@ local function buildTooltipsPage()
         TT:GetTooltipBorderChoices(), function(value)
             TacoTipConfig.tooltip_border_texture = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.tooltipBorderTextureChoice, builder.y)
 
@@ -2242,7 +1999,6 @@ local function buildTooltipsPage()
         L["OPTIONS_SHOW_SEPARATORS_DESC"] or
         "Add thin horizontal lines between logical sections of the tooltip for visual clarity.", function(_, value)
             TacoTipConfig.show_separators = value
-            modernShowExampleTooltip()
         end)
     controls.showSeparators:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
 
@@ -2251,7 +2007,6 @@ local function buildTooltipsPage()
         "Set a maximum width for the tooltip to prevent it from becoming too wide with long names or guild titles. Set to 0 for no limit.",
         function(value)
             TacoTipConfig.tooltip_max_width = value
-            modernShowExampleTooltip()
         end, 0, 500, 10)
     controls.tooltipMaxWidth:SetPoint("TOPLEFT", content, "TOPLEFT", 214, builder.y)
     controls.tooltipMaxWidth.valueText:SetPoint("LEFT", controls.tooltipMaxWidth, "RIGHT", 8, 0)
@@ -2267,7 +2022,6 @@ local function buildTooltipsPage()
         function(_, value)
             TacoTipConfig.tooltip_portrait = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     controls.tooltipPortrait:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     builder.y = builder.y - 34
@@ -2276,7 +2030,6 @@ local function buildTooltipsPage()
         L["OPTIONS_TOOLTIP_PORTRAIT_SCALE"] or "Portrait scale",
         L["OPTIONS_TOOLTIP_PORTRAIT_SCALE_DESC"] or "Scale the portrait shown next to unit tooltips.", function(value)
             TacoTipConfig.tooltip_portrait_scale = value / 100
-            modernShowExampleTooltip()
         end, 50, 200, 5)
     controls.tooltipPortraitScale:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.tooltipPortraitScale.valueText:SetPoint("LEFT", controls.tooltipPortraitScale, "RIGHT", 8, 0)
@@ -2288,7 +2041,6 @@ local function buildTooltipsPage()
         function(_, value)
             TacoTipConfig.tooltip_portrait_3d = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     controls.tooltipPortrait3D:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     builder.y = builder.y - 34
@@ -2298,7 +2050,6 @@ local function buildTooltipsPage()
         "Controls how close the 3D portrait model appears. Higher values zoom in on the character's face.",
         function(value)
             TacoTipConfig.tooltip_portrait_zoom = value / 100
-            modernShowExampleTooltip()
         end, 30, 100, 5)
     controls.tooltipPortraitZoom:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.tooltipPortraitZoom.valueText:SetPoint("LEFT", controls.tooltipPortraitZoom, "RIGHT", 8, 0)
@@ -2307,7 +2058,6 @@ local function buildTooltipsPage()
     controls.classIconSize = createOptionsSlider(content, nil, "Class icon size",
         "Size of the class icon badge shown at the top-right corner of player tooltips.", function(value)
             TacoTipConfig.class_icon_size = value
-            modernShowExampleTooltip()
         end, 8, 32, 1)
     controls.classIconSize:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.classIconSize.valueText:SetPoint("LEFT", controls.classIconSize, "RIGHT", 8, 0)
@@ -2319,7 +2069,6 @@ local function buildTooltipsPage()
         TT:GetTooltipFontChoices(), function(value)
             TacoTipConfig.tooltip_font = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.tooltipFontChoice, builder.y)
 
@@ -2327,7 +2076,6 @@ local function buildTooltipsPage()
         L["OPTIONS_TOOLTIP_FONT_SIZE_DESC"] or
         "Change the size of the tooltip text without affecting the rest of the UI.", function(value)
             TacoTipConfig.tooltip_font_size = value
-            modernShowExampleTooltip()
         end, 8, 20, 1)
     controls.tooltipFontSize:SetPoint("TOPLEFT", content, "TOPLEFT", 4, builder.y)
     controls.tooltipFontSize.valueText:SetPoint("LEFT", controls.tooltipFontSize, "RIGHT", 8, 0)
@@ -2345,92 +2093,18 @@ local function buildTooltipsPage()
         TT:GetTooltipStatusBarTextureChoices(), function(value)
             TacoTipConfig.tooltip_bar_texture = value
             modernGetConfig()
-            modernShowExampleTooltip()
         end)
     builder.y = builder.y - layoutDropdownControl(content, controls.tooltipBarTextureChoice, builder.y, 14)
 
-    builder:Finalize(128)
-
-    -- Preview pane floats in the TOP-RIGHT corner of the Blizzard Settings UI,
-    -- parented to UIParent so it is never clipped by the Settings frame
-    -- hierarchy. Its size stays natural (it renders the real tooltip at actual
-    -- size) — it must match what the player's tooltip will look like. It is
-    -- offset in from the screen edge so it never sits under the Settings X.
-    local previewPane = CreateFrame("Frame", nil, UIParent)
-    previewPane:SetFrameStrata("FULLSCREEN_DIALOG")
-    previewPane:SetFrameLevel(100)
-    previewPane:SetWidth(250)
-    previewPane:Hide()
-
-    modernOptionsState.previewPane = previewPane
-
-    local previewTitle = previewPane:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    previewTitle:SetPoint("TOPLEFT", previewPane, "TOPLEFT", 0, 0)
-    previewTitle:SetPoint("TOPRIGHT", previewPane, "TOPRIGHT", 0, 0)
-    previewTitle:SetJustifyH("LEFT")
-    previewTitle:SetText(L["OPTIONS_PREVIEW_HEADER"] or "Live Preview")
-
-    local previewHelp = previewPane:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    previewHelp:SetPoint("TOPLEFT", previewTitle, "BOTTOMLEFT", 0, -4)
-    previewHelp:SetPoint("TOPRIGHT", previewPane, "TOPRIGHT", 0, -4)
-    previewHelp:SetJustifyH("LEFT")
-    previewHelp:SetText(L["OPTIONS_PREVIEW_HELP"] or
-        "Hover controls for more info. Appearance changes update this preview immediately.")
-
-    modernOptionsState.previewAnchor = CreateFrame("Frame", nil, previewPane)
-    modernOptionsState.previewAnchor:SetPoint("TOPLEFT", previewHelp, "BOTTOMLEFT", 0, -8)
-    modernOptionsState.previewAnchor:SetPoint("TOPRIGHT", previewPane, "TOPRIGHT", 0, 0)
-    modernOptionsState.previewAnchor:SetHeight(220)
-
-    modernOptionsState.preview = CreateFrame("GameTooltip", "TacoTipModernPreviewTooltip", previewPane,
-        "GameTooltipTemplate")
-    modernOptionsState.previewHealthBar = CreateFrame("StatusBar", nil, modernOptionsState.preview)
-    modernOptionsState.previewHealthBar:SetSize(0, 8)
-    modernOptionsState.previewHealthBar:SetPoint("TOPLEFT", modernOptionsState.preview, "BOTTOMLEFT", 2, -1)
-    modernOptionsState.previewHealthBar:SetPoint("TOPRIGHT", modernOptionsState.preview, "BOTTOMRIGHT", -2, -1)
-    modernOptionsState.previewHealthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
-    modernOptionsState.previewHealthBar:SetStatusBarColor(0, 1, 0)
-    modernOptionsState.previewPowerBar = CreateFrame("StatusBar", nil, modernOptionsState.preview)
-    modernOptionsState.previewPowerBar:SetSize(0, 8)
-    modernOptionsState.previewPowerBar:SetPoint("TOPLEFT", modernOptionsState.preview, "BOTTOMLEFT", 2, -9)
-    modernOptionsState.previewPowerBar:SetPoint("TOPRIGHT", modernOptionsState.preview, "BOTTOMRIGHT", -2, -9)
-    modernOptionsState.previewPowerBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
-    modernOptionsState.previewPowerBar:SetStatusBarColor(1, 1, 0)
+    builder:Finalize(64)
 
     panel:SetScript("OnShow", function()
-        -- Show the floating preview (position is screen-relative top-right,
-        -- clear of the X). The preview reflects settings immediately; hybrid
-        -- styles also expand on Shift like the live tooltip, so listen for
-        -- modifier changes while this page is open.
-        -- F1: re-register the MODIFIER_STATE_CHANGED listener here as well.
-        -- The root optionsPages.tooltips:OnShow handler registers it on the
-        -- FIRST open, but buildTooltipsPage overwrites OnShow with this closure
-        -- on first build, so this is what runs on every subsequent open.
-        -- RegisterEvent is idempotent, so no duplicate listener is created.
-        panel:RegisterEvent("MODIFIER_STATE_CHANGED")
-        panel:SetScript("OnEvent", function(_, event)
-            if (event == "MODIFIER_STATE_CHANGED") then
-                modernShowExampleTooltip()
-            end
-        end)
-        local pp = modernOptionsState.previewPane
-        if (pp) then
-            positionPreviewTopRight()
-            pp:Show()
-        end
         if (panel.Refresh) then panel:Refresh() end
     end)
     panel:SetScript("OnHide", function()
-        panel:UnregisterEvent("MODIFIER_STATE_CHANGED")
-        panel:SetScript("OnEvent", nil)
         if (pickerFrame) then
             pickerFrame:Hide()
         end
-        local pp = modernOptionsState.previewPane
-        if (pp) then
-            pp:Hide()
-        end
-        clearPreviewVisuals()
     end)
 
     panel.Refresh = function()
@@ -2495,7 +2169,6 @@ local function buildTooltipsPage()
         controls.showIlvlInline:SetChecked(TacoTipConfig.show_ilvl_inline)
         controls.showSeparators:SetChecked(TacoTipConfig.show_separators)
         controls.tooltipMaxWidth:SetValueSilently(TacoTipConfig.tooltip_max_width or 0)
-        modernShowExampleTooltip()
     end
 
     modernOptionsState.pages.tooltipsBuilt = true
@@ -2852,39 +2525,18 @@ end
 TT.RefreshOptionsUI = function(self)
     ensureModernOptionsBuilt()
     modernGetConfig()
-    modernShowExampleTooltip()
 end
 
 local function onPageShow(panel)
     ensureModernOptionsBuilt()
-    -- Show the floating preview pane when the tooltips page is opened.
-    -- Other child pages (positioning, characterInspect) do not show it.
-    if (panel == optionsPages.tooltips) then
-        local pp = modernOptionsState.previewPane
-        if (pp and not pp:IsShown()) then
-            positionPreviewTopRight()
-            pp:Show()
-        end
-    end
     if (panel and panel.Refresh) then panel:Refresh() end
 end
 local function onOptionsFrameShow(panel)
     ensureModernOptionsBuilt()
     modernGetConfig()
-    modernShowExampleTooltip()
 end
--- F1: register the live Shift-expand preview listener unconditionally so it
--- is active on the FIRST page open. The build-time OnShow closure used to
--- register it only after the page had already shown, delaying it by one open.
--- (Do NOT gate on panel.Refresh — on the first open the page has not been
--- built yet, so the guard would skip registration and reintroduce the bug.)
+
 optionsPages.tooltips:SetScript("OnShow", function(panel, ...)
-    panel:RegisterEvent("MODIFIER_STATE_CHANGED")
-    panel:SetScript("OnEvent", function(_, event)
-        if (event == "MODIFIER_STATE_CHANGED") then
-            modernShowExampleTooltip()
-        end
-    end)
     return safeCall(onPageShow, panel, ...)
 end)
 optionsPages.positioning:SetScript("OnShow", function(panel, ...)

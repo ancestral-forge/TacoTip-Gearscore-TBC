@@ -4,6 +4,8 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.2` | `2026-08-21` | Fix: TBC Classic Anniversary Dual-Spec Resolution. Resolved premature load-time `hasDualSpec` capability evaluation in `LibClassicInspector`, added `C_SpecializationInfo.GetTalentInfo` query fallback for TBC Anniversary & SoD, registered `PLAYER_TALENT_UPDATE` & `ACTIVE_TALENT_GROUP_CHANGED` dynamically across all dual-spec clients, and guarded talent point summation against nil ranks. |
+| `0.7.1` | `2026-08-20` | Cleanup & Architecture Polish: Completely excised obsolete floating options preview tooltip (`modernShowExampleTooltip`, `previewPane`, `previewHealthBar`, `previewPowerBar`, `previewAnchor`) and dead helper methods across `options.lua` and `main.lua`. All option controls directly update configuration with 0 overhead. Cleaned up options page layout and descriptions across all 11 locale files. Zero luacheck warnings / zero errors across all 21 files. |
 | `0.7.0` | `2026-08-14` | Fix: Minimap & World Map POI / pin / node tooltip flickering resolved. Disabled mouse capture on GameTooltip, preserved true caller frame ownership in GameTooltip_SetDefaultAnchor, and guarded UPDATE_MOUSEOVER_UNIT against falsely hiding non-unit tooltips. Tooltip border edge size default changed to 14px. Deferred border timers converted to cancellable C_Timer.NewTimer handles. |
 | `0.6.9` | `2026-08-13` | Shaman Blue default toggle for Classic Era/SoD, Details BarBorder 3 default border with 18px edge size, custom scrollable media dropdown selector UI (Image 2 style), updated unit tests and localization. |
 | `0.6.8` | `2026-08-11` | Fix: non-unit tooltip bleed-through & flicker resolved by converting deferred border timers to cancellable `C_Timer.NewTimer` handles and adding `GameTooltip:OnTooltipCleared` hook. Fix: all 4 WoWUnit tests passing (`DefaultsHaveKeys`, `ConfigDefaultsShowGuild`, `ClassicEraBleedThrough`, `ClassicEraFallbackParsing`). Removed `show_gs_delta` & `TacoTipGSHistory` tracking. |
@@ -27,6 +29,56 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.2] - 2026-08-21
+
+### Fixed - 0.7.2
+
+- **TBC Classic Anniversary Dual-Spec Not Showing:**
+  - Resolved an issue where `hasDualSpec` was evaluated only once at file-load time in `LibClassicInspector.lua`. On TBC Anniversary (`clientBuildMajor == 2`), `isWotlk` is false and `GetNumTalentGroups()` at addon boot returned 1, permanently setting `hasDualSpec = false` for the entire game session and hard-blocking secondary spec queries (`group == 2`).
+  - Updated `hasDualSpec` to recognize TBC Classic Anniversary (`isTBC`), WotLK (`isWotlk`), and `C_SpecializationInfo` / `GetNumTalentGroups` (Season of Discovery & Classic Era).
+- **`C_SpecializationInfo.GetTalentInfo` FrameXML Fallback:**
+  - Added wrapper fallback around `GetTalentInfo` to construct `C_SpecializationInfo.GetTalentInfo` query structs when `_G.GetTalentInfo` deprecation fallbacks are disabled on TBC Anniversary and Classic Era/SoD clients.
+- **Dynamic Talent Group Events:**
+  - Registered `PLAYER_TALENT_UPDATE` and `ACTIVE_TALENT_GROUP_CHANGED` events on all dual-spec capable clients (TBC Anniversary, WotLK, and SoD/Classic Era) so spec switches and talent reallocations immediately trigger tooltip updates.
+- **Talent Point Summation Nil-Safety:**
+  - Added `or 0` guards to `select(5, GetTalentInfo(...))` across `GetSpecialization`, `GetTalentPoints`, `sendInfo`, and `GetTalentRanksTable` to prevent arithmetic nil errors on sparse talent trees.
+- **Dual-Spec Talent Alignment in Compact/Standard Tooltip Mode:**
+  - Resolved a visual misalignment where the secondary talent spec line was offset due to 6 hardcoded space characters. Replaced fixed spaces with an invisible zero-alpha prefix (`|c00000000%s:|r`) matching the exact pixel width of localized `Talents:`, guaranteeing pixel-perfect vertical alignment between primary and secondary talent icons across all fonts and languages.
+- **3D Portrait Real-Time Alpha Fade Synchronization:**
+  - Added continuous `OnUpdate` alpha tracking on `tooltip.TacoTipPortrait3D` that matches `GameTooltip:GetAlpha()` on every render frame, ensuring the 3D player portrait smoothly fades out in lockstep with the tooltip backdrop/text instead of abruptly vanishing.
+- **3D Portrait Lifecycle & Reset Hardening:**
+  - Added explicit `ClearModel()` and `SetAlpha(1.0)` restoration inside `clearTooltipVisuals` so 3D model meshes are purged from GPU memory and reset to full opacity when transitioning between units, map POIs, action bar spells, and UI elements.
+- **Guarded `UPDATE_MOUSEOVER_UNIT` Event:**
+  - Explicitly gated the `UPDATE_MOUSEOVER_UNIT` hide handler with `if (TacoTipConfig.instant_fade)` to ensure Blizzard's native smooth fade-out is never cut short when Instant Fade is disabled.
+
+### Removed - 0.7.2
+
+- **Excised Dead Elite Frame References:**
+  - Removed orphaned `if (tooltip.TacoTipEliteFrame) then tooltip.TacoTipEliteFrame:Hide() end` checks and stale comments from `main.lua` following the removal of non-functional Retail atlas overlays in v0.6.1.
+
+### Documentation & Localization - 0.7.2
+
+- **100% Localization Parity:** Verified all 11 language locale files (`enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `koKR`, `ptBR`, `ruRU`, `zhCN`, `zhTW`) have 100% key coverage (261/261 keys per locale) and validated all format specifiers (`%s`, `%d`).
+- **Static Analysis & Testing:** 0 warnings / 0 errors in `luacheck .` across all 21 files, with comprehensive test verification for dual-spec resolution and portrait alpha sync.
+- **Version metadata bumped to `0.7.2`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
+## [0.7.1] - 2026-08-20
+
+### Removed - 0.7.1
+
+- **Excised obsolete floating options preview tooltip and dead code:**
+  - Removed `modernShowExampleTooltip`, `previewPane`, `previewHealthBar`, `previewPowerBar`, `previewAnchor`, `positionPreviewTopRight`, `clearPreviewVisuals`, and all unneeded preview keys from `modernOptionsState` in `options.lua`.
+  - Removed `TT:ApplyPreviewClassOverride` in `main.lua`.
+  - Removed over 40 redundant `modernShowExampleTooltip()` calls across widget change callbacks in `options.lua` — option toggles now cleanly apply directly to configuration with zero unnecessary UI overhead.
+  - Removed dead preview string entries (`OPTIONS_PREVIEW_HEADER`, `OPTIONS_PREVIEW_HELP`) and updated options descriptions across all 11 locale files (`enUS`, `deDE`, `esES`, `esMX`, `frFR`, `itIT`, `koKR`, `ptBR`, `ruRU`, `zhCN`, `zhTW`).
+
+### Changed - 0.7.1
+
+- **Options UI Performance & Cleanliness:**
+  - Streamlined `TT.RefreshOptionsUI`, `onPageShow`, `onOptionsFrameShow`, and page show handlers in `options.lua` to focus purely on building controls and syncing config state.
+  - Full static analysis pass: `luacheck .` reports 0 warnings and 0 errors across all 21 files.
+- **Version metadata bumped to `0.7.1`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, and `AGENTS.md`.
 
 ## [0.7.0] - 2026-08-14
 

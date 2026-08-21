@@ -151,9 +151,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Overlay-Beweger sind entsperrt.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Overlay-Beweger sind gesperrt.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Passe die zusätzlichen TacoTip-Daten für Einheiten- und Gegenstands-Tooltips an und sieh dir das Ergebnis direkt in der Optionen-Oberfläche an.",
+    "Passe die zusätzlichen TacoTip-Daten für Einheiten- und Gegenstands-Tooltips an.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Wähle, wie viele Details TacoTip standardmäßig anzeigen soll. Hybride Stile zeigen standardmäßig das kompakte Layout und erweitern sich bei gedrückter Umschalt-Taste – sowohl im Live-Tooltip als auch in dieser Vorschau.",
+    "Wähle, wie viele Details TacoTip standardmäßig anzeigen soll. Hybride Stile zeigen standardmäßig das kompakte Layout und erweitern sich bei gedrückter Umschalt-Taste.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Einheiten-Tooltip-Inhalt",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "Gegenstands-Tooltip-Daten",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "Darstellung",
@@ -212,9 +212,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Lebens- & Energieleisten-Textur",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Verwendet eine Textur sowohl für die Lebens- als auch für die Energieleiste. Das einzelne Dropdown zeigt jede Textur mit einem vollständigen Leistenstreifen samt Namen an, und SharedMedia-Pakete wie Merfin Plus erscheinen automatisch, wenn sie Medien registrieren.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Live-Vorschau",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Fahre mit der Maus über ein Steuerelement, um Details zu sehen. Die Titel über den Steuerelementen beschreiben, was du änderst, und Aussehensänderungen werden sofort in dieser Vorschau angezeigt.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Lege fest, wie TacoTip den Haupt-Tooltip positioniert, und steuere den Beweger-Ablauf zum Speichern einer benutzerdefinierten Position.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Tooltip-Positionsmodus",

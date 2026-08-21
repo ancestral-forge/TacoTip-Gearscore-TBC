@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.0"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.2"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -365,7 +365,24 @@ local function ensureTooltipPortrait(tooltip)
                 tooltip.TacoTipPortrait3D = model
                 tooltip.TacoTipPortrait3D:SetFrameLevel(tooltip:GetFrameLevel() + 1)
                 tooltip.TacoTipPortrait3D:EnableMouse(false)
+                tooltip.TacoTipPortrait3D:SetScript("OnUpdate", function(self)
+                    if (tooltip and tooltip.GetAlpha) then
+                        local a = tooltip:GetAlpha()
+                        if (self:GetAlpha() ~= a) then
+                            self:SetAlpha(a)
+                        end
+                    end
+                end)
             end
+        elseif (tooltip.TacoTipPortrait3D.SetScript and not tooltip.TacoTipPortrait3D:GetScript("OnUpdate")) then
+            tooltip.TacoTipPortrait3D:SetScript("OnUpdate", function(self)
+                if (tooltip and tooltip.GetAlpha) then
+                    local a = tooltip:GetAlpha()
+                    if (self:GetAlpha() ~= a) then
+                        self:SetAlpha(a)
+                    end
+                end
+            end)
         end
         if (tooltip.TacoTipPortrait3D) then
             if (tooltip.TacoTipPortrait) then
@@ -454,7 +471,7 @@ local function applyTooltipBackdrop(tooltip)
         -- background — we only draw the colored border on top.
         backdrop:SetBackdrop({
             edgeFile = hasBorder and borderTexture or nil,
-            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 20) or 0,
+            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 14) or 0,
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
     else
@@ -464,7 +481,7 @@ local function applyTooltipBackdrop(tooltip)
             edgeFile = hasBorder and borderTexture or nil,
             tile = true,
             tileSize = 16,
-            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 20) or 0,
+            edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 14) or 0,
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
     end
@@ -634,6 +651,9 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
                 -- 2D fallback only when 3D model creation failed (portrait is a Texture).
                 pcall(_G.SetPortraitTexture, portrait, unit)
             end
+            if (portrait.SetAlpha and tooltip.GetAlpha) then
+                portrait:SetAlpha(tooltip:GetAlpha() or 1)
+            end
             portrait:Show()
         else
             portrait:Hide()
@@ -647,30 +667,6 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
     end
     if (TacoTipPowerBar and TacoTipPowerBar.SetStatusBarTexture) then
         TacoTipPowerBar:SetStatusBarTexture(barTexture)
-    end
-end
-
-function TT:ApplyPreviewClassOverride(tooltip, classFile)
-    if (not tooltip or not classFile) then
-        return
-    end
-    local classColor = getClassColor(classFile)
-    if (not classColor) then
-        return
-    end
-    -- Force this preview frame's cached class color to the requested class so
-    -- the border/background match the mock identity (the live tooltip always
-    -- resolves from the real hovered unit and is unaffected by this override).
-    tooltip.TacoTipPlayerClassColor = tooltip.TacoTipPlayerClassColor or {}
-    tooltip.TacoTipPlayerClassColor.r, tooltip.TacoTipPlayerClassColor.g, tooltip.TacoTipPlayerClassColor.b =
-        classColor.r, classColor.g, classColor.b
-
-    applyTooltipBorderOverlay(tooltip, nil, classColor.r, classColor.g, classColor.b)
-
-    local backdrop = tooltip and tooltip.TacoTipBackdropFrame
-    if (backdrop and backdrop.SetBackdropColor and not backdrop.isBorderOnly and TacoTipConfig.tooltip_background_use_class) then
-        backdrop:SetBackdropColor(classColor.r, classColor.g, classColor.b,
-            TacoTipConfig.tooltip_background_alpha or 0.85)
     end
 end
 
@@ -748,9 +744,12 @@ local function clearTooltipVisuals(tooltip)
     end
     if (tooltip.TacoTipPortrait3D) then
         tooltip.TacoTipPortrait3D:Hide()
-    end
-    if (tooltip.TacoTipEliteFrame) then
-        tooltip.TacoTipEliteFrame:Hide()
+        if (tooltip.TacoTipPortrait3D.ClearModel) then
+            pcall(tooltip.TacoTipPortrait3D.ClearModel, tooltip.TacoTipPortrait3D)
+        end
+        if (tooltip.TacoTipPortrait3D.SetAlpha) then
+            tooltip.TacoTipPortrait3D:SetAlpha(1)
+        end
     end
     if (TacoTipPowerBar) then
         TacoTipPowerBar:Hide()
@@ -1103,7 +1102,7 @@ local function onTooltipSetUnit(tooltip)
                                 { " ", string.format("|c99ffffff%s|r", specText), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
                                     .g, NORMAL_FONT_COLOR.b, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b })
                         else
-                            tinsert(linesToAdd, { string.format("      |c99ffffff%s|r", specText), 1, 1, 1 })
+                            tinsert(linesToAdd, { string.format("|c00000000%s: |r|c99ffffff%s|r", L["Talents"], specText), 1, 1, 1 })
                         end
                     end
                 elseif (active == 1) then
@@ -1127,7 +1126,7 @@ local function onTooltipSetUnit(tooltip)
                                 { " ", string.format("|c99ffffff%s|r", specText), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
                                     .g, NORMAL_FONT_COLOR.b, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b })
                         else
-                            tinsert(linesToAdd, { string.format("      |c99ffffff%s|r", specText), 1, 1, 1 })
+                            tinsert(linesToAdd, { string.format("|c00000000%s: |r|c99ffffff%s|r", L["Talents"], specText), 1, 1, 1 })
                         end
                     end
                 end
@@ -1401,7 +1400,7 @@ local function itemToolTipHook(self)
 
     -- Apply cosmetic appearance (font, backdrop texture, border texture) to
     -- item tooltips so user-selected visual style carries through.  Skip
-    -- unit-specific effects (class color, portrait, elite frame, bar texture)
+    -- unit-specific effects (class color, portrait, bar texture)
     -- since there is no player unit on an item tooltip.
     applyTooltipFonts(self)
     applyTooltipBackdrop(self)
@@ -1457,7 +1456,7 @@ local function onTooltipShow(tooltip)
     if (not unit or not UnitIsPlayer(unit)) then
         -- Non-player / non-unit tooltip (items, spells, minimap or world-map
         -- POI icons). Clear ALL player-specific visuals left by the previous
-        -- hover — border, portrait, 3D portrait, elite frame, power bar —
+        -- hover — border, portrait, 3D portrait, power bar —
         -- so none of them bleed through onto this tooltip. This is broader
         -- than just resetTooltipBorderToDefault because ClearLines() (used by
         -- map POI tooltips) does not fire OnTooltipCleared, so the portrait
@@ -1968,11 +1967,11 @@ local function onEvent(self, event, ...)
             end)
         end
     elseif (event == "UPDATE_MOUSEOVER_UNIT") then
-        if (GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
+        if (TacoTipConfig.instant_fade and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
             cancelFadeTimer()
             fadeTimer = C_Timer.NewTimer(0, function()
                 safeCall(function()
-                    if (not UnitExists("mouseover") and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
+                    if (TacoTipConfig.instant_fade and not UnitExists("mouseover") and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
                         GameTooltip:Hide()
                     end
                 end)

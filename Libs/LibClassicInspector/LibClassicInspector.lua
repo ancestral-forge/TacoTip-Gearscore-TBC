@@ -65,41 +65,46 @@ local NewTicker = _G.C_Timer and _G.C_Timer.NewTicker
 local GetNamePlates = (_G.C_NamePlate and _G.C_NamePlate.GetNamePlates) or _G.GetNamePlates
 local Item = _G.Item
 
----@type fun(tabIndex: number, talentIndex: number, isInspect?: boolean|number, isPet?: boolean|string, groupIndex?: number): name: string, iconTexture: string|number, tier: number, column: number, rank: number, maxRank: number, isExceptional: boolean, available: number, ...
-local GetTalentInfo = _G.GetTalentInfo
+local rawGetTalentInfo = _G.GetTalentInfo
+local function GetTalentInfo(tabIndex, talentIndex, isInspect, isPet, groupIndex)
+    if (rawGetTalentInfo) then
+        return rawGetTalentInfo(tabIndex, talentIndex, isInspect, isPet, groupIndex)
+    end
+    if (C_SpecializationInfo and C_SpecializationInfo.GetTalentInfo) then
+        local query = {
+            specializationIndex = tabIndex,
+            talentIndex = talentIndex,
+            isInspect = isInspect and true or false,
+            isPet = isPet and true or false,
+            groupIndex = groupIndex or 1,
+        }
+        local info = C_SpecializationInfo.GetTalentInfo(query)
+        if (info) then
+            return info.name, info.icon, info.tier, info.column, info.rank, info.maxRank, info.isExceptional, info.available, info.talentID
+        end
+    end
+    return nil, nil, nil, nil, 0, 0, nil, nil, nil
+end
 
 local isWotlk = clientBuildMajor == 3
 local isTBC = clientBuildMajor == 2
 local isClassic = clientBuildMajor == 1
--- SoD (Classic Era 1.15.x) exposes dual-spec via C_SpecializationInfo, unlike
--- original Vanilla/TBC which are single-spec. Any client reporting >1 spec
--- group is treated as dual-spec capable so group 2 talent reads are allowed.
-local hasDualSpec
-do
-    if (isWotlk) then
-        hasDualSpec = true
-    else
-        local n = 1
-        if (GetNumTalentGroups) then
-            n = GetNumTalentGroups() or 1
-        elseif (C_SpecializationInfo and C_SpecializationInfo.GetNumSpecGroups) then
-            n = C_SpecializationInfo.GetNumSpecGroups(false) or 1
-        end
-        hasDualSpec = (n > 1)
-    end
-end
+-- TBC Anniversary (2.5.5/2.5.6), WotLK (3.4.x), and SoD / Classic Era (1.15.x)
+-- all support dual specialization.
+local hasDualSpec = isWotlk or isTBC or (C_SpecializationInfo ~= nil) or (GetNumTalentGroups ~= nil)
 
 -- Returns the active talent group (1-2) for the player, or for the unit
 -- currently being inspected when isInspect is true. Uses the modern
 -- C_SpecializationInfo API which is present on every supported client
--- (Classic/SoD, TBC, Wrath); falls back to the legacy global on WotLK.
+-- (Classic/SoD, TBC Anniversary, Wrath); falls back to the legacy global on WotLK.
 local function GetActiveSpecGroupFor(isInspect)
     if (C_SpecializationInfo and C_SpecializationInfo.GetActiveSpecGroup) then
         local g = C_SpecializationInfo.GetActiveSpecGroup(isInspect and true or false)
         if (g and g > 0) then return g end
     end
-    if (isWotlk and GetActiveTalentGroup) then
-        return GetActiveTalentGroup(isInspect and true or false, nil)
+    if (GetActiveTalentGroup) then
+        local ok, g = pcall(GetActiveTalentGroup, isInspect and true or false, nil)
+        if (ok and g and g > 0) then return g end
     end
     return 1
 end
@@ -2931,12 +2936,12 @@ local function cacheUserTalents(unit)
             if (isWotlk) then
                 for j = 1, GetNumTalents(i, true, false, x) do
                     local _, _, _, _, rank = GetTalentInfo(i, j, true, false, x)
-                    talents[x][i][j] = rank
+                    talents[x][i][j] = rank or 0
                 end
             else
                 for j = 1, GetNumTalents(i, true, false) do
                     local _, _, _, _, rank = GetTalentInfo(i, j, true, false, x)
-                    talents[x][i][j] = rank
+                    talents[x][i][j] = rank or 0
                 end
             end
         end
@@ -3180,9 +3185,11 @@ f:RegisterEvent("PLAYER_UNGHOST")
 f:RegisterEvent("GROUP_ROSTER_UPDATE")
 f:RegisterEvent("PLAYER_ENTERING_WORLD")
 f:RegisterEvent("CHARACTER_POINTS_CHANGED")
-if (isWotlk) then
+if (hasDualSpec or isWotlk or isTBC) then
     f:RegisterEvent("PLAYER_TALENT_UPDATE")
     f:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
+end
+if (isWotlk) then
     f:RegisterEvent("INSPECT_ACHIEVEMENT_READY")
 end
 RegisterAddonMessagePrefix(C_PREFIX)
@@ -3194,7 +3201,7 @@ local function sendInfo()
         for x = 1, (hasDualSpec and 2 or 1) do
             for i = 1, 3 do -- GetNumTalentTabs
                 for j = 1, GetNumTalents(i, false, false) do
-                    s = s .. select(5, GetTalentInfo(i, j, false, false, x))
+                    s = s .. (select(5, GetTalentInfo(i, j, false, false, x)) or 0)
                 end
             end
         end
@@ -3531,7 +3538,7 @@ function lib:GetSpecialization(unitorguid, _group)
         for i = 1, 3 do -- GetNumTalentTabs
             local points = 0
             for j = 1, GetNumTalents(i, false, false) do
-                points = points + select(5, GetTalentInfo(i, j, false, false, group))
+                points = points + (select(5, GetTalentInfo(i, j, false, false, group)) or 0)
             end
             if (points > mostPoints) then
                 mostPoints = points
@@ -3588,7 +3595,7 @@ function lib:GetTalentPoints(unitorguid, _group)
     if (guid == UnitGUID("player")) then
         for i = 1, 3 do -- GetNumTalentTabs
             for j = 1, GetNumTalents(i, false, false) do
-                talents[i] = talents[i] + select(5, GetTalentInfo(i, j, false, false, group))
+                talents[i] = talents[i] + (select(5, GetTalentInfo(i, j, false, false, group)) or 0)
             end
         end
         return unpack(talents)
@@ -3867,7 +3874,7 @@ function lib:GetTalentRanksTable(unitorguid)
         for x = 1, (hasDualSpec and 2 or 1) do
             for i = 1, 3 do -- GetNumTalentTabs
                 for j = 1, GetNumTalents(i, false, false) do
-                    talents[x][i][j] = select(5, GetTalentInfo(i, j, false, false, x))
+                    talents[x][i][j] = select(5, GetTalentInfo(i, j, false, false, x)) or 0
                 end
             end
         end

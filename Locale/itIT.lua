@@ -154,9 +154,9 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUS_OVERLAYS_UNLOCKED"] = "Gli spostatori delle sovrapposizioni sono sbloccati.",
     ["OPTIONS_STATUS_OVERLAYS_LOCKED"] = "Gli spostatori delle sovrapposizioni sono bloccati.",
     ["OPTIONS_TOOLTIPS_PAGE_DESC"] =
-    "Regola i dati extra che TacoTip aggiunge ai tooltip di unità e oggetti, e visualizza l'anteprima del risultato senza uscire dall'interfaccia delle opzioni.",
+    "Regola i dati extra che TacoTip aggiunge ai tooltip di unità e oggetti.",
     ["OPTIONS_TOOLTIP_STYLE_DESC"] =
-    "Scegli quanti dettagli TacoTip mostra per impostazione predefinita. Gli stili ibridi mostrano il layout compatto per impostazione predefinita e si espandono completamente mentre tieni premuto Maiusc — sia nel tooltip dal vivo sia in questa anteprima.",
+    "Scegli quanti dettagli TacoTip mostra per impostazione predefinita. Gli stili ibridi mostrano il layout compatto per impostazione predefinita e si espandono completamente mentre tieni premuto Maiusc.",
     ["OPTIONS_SECTION_UNIT_TOOLTIPS"] = "Contenuto tooltip unità",
     ["OPTIONS_SECTION_ITEM_TOOLTIPS"] = "Dati tooltip oggetto",
     ["OPTIONS_SECTION_VISUAL_STYLE"] = "Stile visivo",
@@ -215,9 +215,6 @@ _G.TACOTIP_LOCALE = {
     ["OPTIONS_STATUSBAR_TEXTURE"] = "Texture delle barre salute e potere",
     ["OPTIONS_STATUSBAR_TEXTURE_DESC"] =
     "Usa una sola texture sia per la barra della salute sia per quella del potere. Il menu a discesa mostra l'anteprima di ogni texture con una barra completa e il suo nome, e i pacchetti SharedMedia come Merfin Plus compaiono automaticamente quando registrano media.",
-    ["OPTIONS_PREVIEW_HEADER"] = "Anteprima live",
-    ["OPTIONS_PREVIEW_HELP"] =
-    "Passa il mouse su qualsiasi controllo per vedere i dettagli. I titoli sopra ogni controllo descrivono cosa stai cambiando, e le modifiche all'aspetto si applicano immediatamente a questa anteprima.",
     ["OPTIONS_POSITIONING_PAGE_DESC"] =
     "Scegli come TacoTip posiziona il tooltip principale e controlla il flusso dello spostatore usato per salvare una posizione personalizzata.",
     ["OPTIONS_SECTION_TOOLTIP_POSITION"] = "Modalità posizione tooltip",
