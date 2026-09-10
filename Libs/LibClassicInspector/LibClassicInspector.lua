@@ -2897,6 +2897,10 @@ local function addCacheUser(guid, inventory, talents, achievements, glyphs)
             cache[oldestGuid] = nil
         end
     end
+    -- Return the created user so callers can use it immediately
+    -- (e.g. GetInventoryItemMixin memoizes ItemMixins on it). Existing
+    -- callers that ignore the return value are unaffected.
+    return user
 end
 
 local function cacheUserInventory(unit)
@@ -3174,7 +3178,15 @@ if (isWotlk) then
 end
 
 f:SetScript("OnEvent", function(self, event, ...)
-    return self[event](self, event, ...)
+    -- Defensive dispatcher: a registered event without a matching handler
+    -- method previously raised "attempt to call a nil value (self[event])"
+    -- on first fire. Log-and-continue keeps the frame alive instead.
+    local handler = self[event]
+    if (not handler) then
+        geterrorhandler()("LibClassicInspector: no handler registered for event " .. tostring(event))
+        return
+    end
+    return handler(self, event, ...)
 end)
 f:RegisterEvent("INSPECT_READY")
 f:RegisterEvent("UNIT_INVENTORY_CHANGED")
@@ -3682,12 +3694,23 @@ function lib:GetTalentInfo(unitorguid, tabIndex, talentIndex, _group)
     if (guid == UnitGUID("player")) then
         local name, iconTexture, tier, column, rank, maxRank, isExceptional, available = GetTalentInfo(tabIndex,
             talentIndex, false, false, group)
+        -- Same per-tab nil guard as GetTalentInfoByClass: the static table
+        -- may hold fewer talents than the requested index.
+        local talent = talents_table[class][tabIndex][talentIndex]
+        if (not name or not talent) then
+            return nil
+        end
         return name, iconTexture, tier, column, rank, maxRank, isExceptional, available,
-            talents_table[class][tabIndex][talentIndex].id
+            talent.id
     else
         local user = getCacheUser2(guid)
         if (user and user.talents.time ~= 0) then
+            -- Same per-tab nil guard as the player branch above: a tab may
+            -- hold fewer talents than the requested index.
             local talent = talents_table[class][tabIndex][talentIndex]
+            if (not talent) then
+                return nil
+            end
             return talent.name, talent.texture, talent.tier, talent.column,
                 user.talents[group][tabIndex][talentIndex] or 0, talent.maxRank, talent.isExceptional, talent.available,
                 talent.id
@@ -3725,7 +3748,13 @@ function lib:GetTalentInfoByClass(class, tabIndex, talentIndex)
     assert(tabIndex > 0 and tabIndex < 4, "tabIndex is not a valid number (1-3)")
     talentIndex = tonumber(talentIndex) or 0
     assert(talentIndex > 0 and talentIndex <= MAX_TALENTS_PER_TAB, "talentIndex is not a valid number")
+    -- Guard the per-tab bound: MAX_TALENTS_PER_TAB caps every class, but
+    -- individual tabs hold fewer talents. Indexing past a tab's real count
+    -- previously raised "attempt to index a nil value" (raw talent.name).
     local talent = talents_table[class][tabIndex][talentIndex]
+    if (not talent) then
+        return nil
+    end
     return talent.name, talent.texture, talent.tier, talent.column, 0, talent.maxRank, talent.isExceptional,
         talent.available, talent.id
 end
@@ -3808,15 +3837,42 @@ function lib:GetInventoryItemMixin(unitorguid, slot)
     end
     local n = tonumber(slot) or 0
     assert(n > 0 and n < 20, "inventorySlot is not a valid number (1-19)")
+    -- Memoize one ItemMixin per (cached user, slot), keyed by item identity.
+    -- Tooltip consumers call this getter for every slot on every hover;
+    -- without the cache each call allocated a fresh ItemMixin (~19 per
+    -- player tooltip). The idKey makes a changed item in the same slot
+    -- rebuild its mixin instead of returning stale data; entries die with
+    -- their cache user on FIFO eviction.
+    local function getOrCreateMixin(user, idKey, createFn)
+        user.itemMixins = user.itemMixins or {}
+        local entry = user.itemMixins[n]
+        if (entry and entry.id == idKey) then
+            return entry.mixin
+        end
+        local created = createFn()
+        if (created) then
+            user.itemMixins[n] = { id = idKey, mixin = created }
+        end
+        return created
+    end
     if (guid == UnitGUID("player")) then
-        if (GetInventoryItemID("player", n)) then
-            return Item:CreateFromEquipmentSlot(n)
+        local equippedID = GetInventoryItemID("player", n)
+        if (equippedID) then
+            local user = getCacheUser(guid) or addCacheUser(guid, nil, nil, nil, nil)
+            return getOrCreateMixin(user, equippedID, function()
+                return Item:CreateFromEquipmentSlot(n)
+            end)
         end
     else
         local user = getCacheUser2(guid)
         if (user and user.inventory.time ~= 0) then
             local itemID = user.inventory[n]
-            return itemID and Item:CreateFromItemID(itemID) or nil
+            if (not itemID) then
+                return nil
+            end
+            return getOrCreateMixin(user, itemID, function()
+                return Item:CreateFromItemID(itemID)
+            end)
         end
     end
     return nil
@@ -4012,7 +4068,11 @@ function lib:GetAchievementInfo(unitorguid, achievementID)
     local id = tonumber(achievementID) or 0
     assert(id > 0, "achievementID is not a valid number")
     if (not tracked_achievements[id]) then
-        assert(select(15, GetAchievementInfo(id)) == false, "achievementID is not a valid achievement ID")
+        -- Validity probe via the documented isStatistic return (14th). The
+        -- previous select(15) relied on an undocumented extra return that
+        -- classic clients do not provide, so valid achievements could fail
+        -- this assert.
+        assert(select(14, GetAchievementInfo(id)) == false, "achievementID is not a valid achievement ID")
         tracked_achievements[id] = 0
     end
     assert(tracked_achievements[id] == 0, "achievementID is not a valid achievement ID")
@@ -4049,7 +4109,9 @@ function lib:GetStatistic(unitorguid, achievementID)
     local id = tonumber(achievementID) or 0
     assert(id > 0, "achievementID is not a valid number")
     if (not tracked_achievements[id]) then
-        assert(select(15, GetAchievementInfo(id)), "achievementID is not a valid statistic ID")
+        -- Statistic validity probe via the documented isStatistic return
+        -- (14th); see GetAchievementInfo note above about select(15).
+        assert(select(14, GetAchievementInfo(id)) == true, "achievementID is not a valid statistic ID")
         tracked_achievements[id] = 1
     end
     assert(tracked_achievements[id] == 1, "achievementID is not a valid statistic ID")
@@ -4082,9 +4144,11 @@ function lib:AddTrackedAchievement(achievementID)
     local id = tonumber(achievementID) or 0
     assert(id > 0, "achievementID is not a valid number")
     if (not tracked_achievements[id]) then
-        local type = select(15, GetAchievementInfo(id))
-        assert(type ~= nil, "achievementID is not a valid achievement ID")
-        tracked_achievements[id] = type and 1 or 0
+        -- Type detection via the documented isStatistic return (14th);
+        -- also avoids shadowing the global type() with a local.
+        local isStatistic = select(14, GetAchievementInfo(id))
+        assert(isStatistic ~= nil, "achievementID is not a valid achievement ID")
+        tracked_achievements[id] = isStatistic and 1 or 0
     end
     return true, tracked_achievements[id] == 1
 end

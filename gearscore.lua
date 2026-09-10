@@ -190,13 +190,16 @@ function TT_GS:GetQuality(ItemScore)
     return 0.5, 0.5, 0.5, "Trash"
 end
 
-function TT_GS:GetItemScore(ItemLink)
-    if not (ItemLink) then
-        return 0, 0, 0.1, 0.1, 0.1
-    end
-    local _, itemLinkOut, ItemRarity, ItemLevel, _, _, _, _, ItemEquipLoc = GetItemInfo(ItemLink)
-    if (not itemLinkOut and RequestLoadItemDataByID) then
-        local itemID = tonumber(string.match(tostring(ItemLink), "item:(%d+)"))
+-- Resolves the raw item data GearScore needs from a pre-fetched GetItemInfo
+-- result table. Callers that already hold the info (e.g. tooltip hooks) MUST
+-- prefer TT_GS:GetItemScoreFromInfo so one hover performs exactly one
+-- GetItemInfo call instead of one per scoring consumer.
+-- @param info result of GetItemInfo(itemLink) (may be nil while uncached)
+-- @return number gearScore, number itemLevel, number r, number g, number b, string|nil equipLoc
+local function scoreFromItemInfo(info, itemLinkFallback)
+    local _, itemLinkOut, ItemRarity, ItemLevel, _, _, _, _, ItemEquipLoc = unpack(info or {})
+    if (not itemLinkOut and itemLinkFallback and RequestLoadItemDataByID) then
+        local itemID = tonumber(string.match(itemLinkFallback, "item:(%d+)"))
         if (itemID) then
             pcall(RequestLoadItemDataByID, itemID)
         end
@@ -250,8 +253,32 @@ function TT_GS:GetItemScore(ItemLink)
     return 0, 0, 0.1, 0.1, 0.1, 0
 end
 
-function TT_GS:GetItemHunterScore(ItemLink)
-    local GearScore, ItemLevel, Red, Green, Blue, ItemEquipLoc = TT_GS:GetItemScore(ItemLink)
+-- Public entry: score from a caller-provided GetItemInfo result table.
+-- Performs no GetItemInfo call of its own; see scoreFromItemInfo.
+function TT_GS:GetItemScoreFromInfo(info)
+    return scoreFromItemInfo(info)
+end
+
+-- Public entry: score directly from an item link. Retained for callers
+-- (frame overlays, tests) that do not already hold a GetItemInfo result.
+function TT_GS:GetItemScore(ItemLink)
+    if not (ItemLink) then
+        return 0, 0, 0.1, 0.1, 0.1
+    end
+    return scoreFromItemInfo({ GetItemInfo(ItemLink) }, ItemLink)
+end
+
+-- Hunter-adjusted score. Accepts an optional pre-fetched GetItemInfo table
+-- so item-tooltip callers reuse one fetch across ilvl/GearScore/HunterScore.
+function TT_GS:GetItemHunterScore(ItemLink, info)
+    -- NOTE: no `info and A(...) or B(...)` shortcut here — and/or yields a
+    -- single value, which would leave every score field after GearScore nil.
+    local GearScore, ItemLevel, Red, Green, Blue, ItemEquipLoc
+    if (info) then
+        GearScore, ItemLevel, Red, Green, Blue, ItemEquipLoc = TT_GS:GetItemScoreFromInfo(info)
+    else
+        GearScore, ItemLevel, Red, Green, Blue, ItemEquipLoc = TT_GS:GetItemScore(ItemLink)
+    end
     if ((ItemEquipLoc == "INVTYPE_2HWEAPON") or (ItemEquipLoc == "INVTYPE_WEAPONMAINHAND") or (ItemEquipLoc == "INVTYPE_WEAPONOFFHAND") or (ItemEquipLoc == "INVTYPE_WEAPON") or (ItemEquipLoc == "INVTYPE_HOLDABLE")) then
         GearScore = floor(GearScore * 0.3164)
     elseif ((ItemEquipLoc == "INVTYPE_RANGEDRIGHT") or (ItemEquipLoc == "INVTYPE_RANGED")) then

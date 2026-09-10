@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.2"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.3"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -99,13 +99,15 @@ local function safeCall(fn, ...)
     return xpcall(fn, geterrorhandler(), ...)
 end
 
--- TBC Anniversary 2.5.3+ (retail 9.x engine) moved tooltip backdrops from
--- GameTooltip to a NineSlice sub-frame (SharedTooltipTemplates.lua per
--- warcraft.wiki.gg/wiki/2.5.3-Consolidated-UI-Changes).
--- SetBackdrop/SetBackdropBorderColor on the parent has NO visual effect;
--- NineSlice renders the actual backdrop. The apply-backdrop functions below
--- detect NineSlice and use NineSlice:SetBorderColor/SetCenterColor directly.
--- This early Mixin provides a fallback for pre-2.5.3 clients.
+-- Modern tooltip templates (GameTooltipTemplate -> TooltipBackdropTemplate)
+-- attach a NineSlice child frame that renders the actual backdrop; this is
+-- verified present on Classic Era, TBC Anniversary AND Wrath (the era
+-- SharedTooltipTemplates.xml ships it, not just the 2.5.3+ UI consolidation).
+-- SetBackdrop/SetBackdropBorderColor on the parent has NO visual effect when
+-- NineSlice renders the backdrop. The apply-backdrop functions below detect
+-- the NineSlice child at runtime and use NineSlice:SetBorderColor/
+-- SetCenterColor directly. This early Mixin provides a fallback for any
+-- client whose tooltip template lacks NineSlice.
 do
     local needsMixin = _G.GameTooltip and _G.BackdropTemplateMixin and not _G.GameTooltip.SetBackdrop
     if (needsMixin and _G.Mixin) then
@@ -430,7 +432,8 @@ local function getOrCreateBackdropFrame(tooltip)
         return tooltip.TacoTipBackdropFrame, tooltip.TacoTipBackdropFrame.isCustom
     end
 
-    -- 2.5.3+ (NineSlice layout): create a border-only overlay frame.
+    -- NineSlice-equipped tooltips (verified on all supported clients):
+    -- create a border-only overlay frame.
     -- NineSlice stays visible and provides the default tooltip background.
     -- Our frame only draws the border edge (edgeFile) on top of NineSlice's
     -- own border at frame level 2 — above NineSlice (0), below text (3+).
@@ -446,7 +449,8 @@ local function getOrCreateBackdropFrame(tooltip)
         return bf, true
     end
 
-    -- Pre-2.5.3: ensure the tooltip has SetBackdrop and use it directly
+    -- Legacy fallback (tooltip without a NineSlice child): ensure the
+    -- tooltip has SetBackdrop and use it directly
     if (not tooltip.SetBackdrop and BackdropTemplateMixin and Mixin) then
         Mixin(tooltip, BackdropTemplateMixin)
     end
@@ -467,15 +471,15 @@ local function applyTooltipBackdrop(tooltip)
     local hasBorder = borderTexture and borderTexture ~= "" and borderTexture ~= "Interface\\None"
 
     if (backdrop.isBorderOnly) then
-        -- 2.5.3+: border overlay only. NineSlice provides the default
-        -- background — we only draw the colored border on top.
+        -- NineSlice-equipped tooltip: border overlay only. NineSlice provides
+        -- the default background — we only draw the colored border on top.
         backdrop:SetBackdrop({
             edgeFile = hasBorder and borderTexture or nil,
             edgeSize = hasBorder and (TacoTipConfig.tooltip_border_edge_size or 14) or 0,
             insets = { left = 4, right = 4, top = 4, bottom = 4 }
         })
     else
-        -- Pre-2.5.3: full backdrop with background + border on the tooltip
+        -- Legacy full backdrop: background + border on the tooltip itself
         backdrop:SetBackdrop({
             bgFile = backgroundTexture,
             edgeFile = hasBorder and borderTexture or nil,
@@ -585,9 +589,10 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
         borderR, borderG, borderB = tintR, tintG, tintB
     end
 
-    -- Background color: only apply for pre-2.5.3 (full backdrop mode).
-    -- On 2.5.3+ (border-only overlay), NineSlice provides the default
-    -- background — tinting the overlay frame does nothing useful.
+    -- Background color: only apply in legacy full-backdrop mode (tooltip
+    -- without a NineSlice child). With the border-only overlay, NineSlice
+    -- provides the default background — tinting the overlay frame does
+    -- nothing useful.
     local backdrop = tooltip and tooltip.TacoTipBackdropFrame
     if (backdrop and backdrop.SetBackdropColor and not backdrop.isBorderOnly) then
         backdrop:SetBackdropColor(bgR, bgG, bgB, TacoTipConfig.tooltip_background_alpha or 0.85)
@@ -1377,19 +1382,22 @@ local function itemToolTipHook(self)
 
     local _, itemLink = self:GetItem()
     if (itemLink and IsEquippableItem(itemLink)) then
+        -- Single GetItemInfo fetch per hover, shared by the ilvl line,
+        -- GearScore and HunterScore below (F3 hot-path fix).
+        local itemInfo = { GetItemInfo(itemLink) }
         if (TacoTipConfig.show_item_level) then
-            local ilvl = select(4, GetItemInfo(itemLink))
+            local ilvl = itemInfo[4]
             if (ilvl and ilvl > 1) then
                 self:AddLine(L["Item Level"] .. " " .. ilvl, 1, 1, 1)
             end
         end
         if (TacoTipConfig.show_gs_items) then
-            local gs, _, r, g, b = GearScore:GetItemScore(itemLink)
+            local gs, _, r, g, b = GearScore:GetItemScoreFromInfo(itemInfo)
             if (gs and gs > 1) then
                 self:AddLine("GearScore: " .. gs, r, g, b)
                 if (TacoTipConfig.show_gs_items_hs or IsModifierKeyDown() or playerClass == "HUNTER" or
                         (InspectFrame and InspectFrame:IsShown() and InspectFrame.unit and select(2, UnitClass(InspectFrame.unit)) == "HUNTER")) then
-                    local hs, _, hsR, hsG, hsB = GearScore:GetItemHunterScore(itemLink)
+                    local hs, _, hsR, hsG, hsB = GearScore:GetItemHunterScore(itemLink, itemInfo)
                     if (gs ~= hs) then
                         self:AddLine((L["HunterScore"] or "HunterScore") .. ": " .. hs, hsR, hsG, hsB)
                     end

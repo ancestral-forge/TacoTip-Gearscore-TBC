@@ -1,5 +1,16 @@
 # Active Context
 
+## 2026-08-27 - v0.7.3: Performance & Hardening Pass (Prism-Full Audit)
+
+- **Single-Fetch Item Tooltips:** Item tooltip hook performs exactly one `GetItemInfo` call per hover; new `TT_GS:GetItemScoreFromInfo(info)` entry point is shared by the ilvl line, GearScore and HunterScore. `GetItemScore(link)` / `GetItemHunterScore(link, info?)` remain backward compatible.
+- **ItemMixin Memoization:** `LibClassicInspector:GetInventoryItemMixin` reuses one `ItemMixin` per (cached user, slot), keyed by item identity so gear swaps rebuild; entries die with their cache user on FIFO eviction.
+- **Overlay Offset Clamping:** `setOffsetValue` clamps typed edit-box input to ±300 (`MODERN_OPTION_SLIDER_MIN/MAX`); `SafeSanitizeConfig` repairs out-of-range/corrupt saved offsets (strings, NaN, ±infinity) to defaults on every load.
+- **Options OnShow Lifecycle Fix:** Page builders no longer assign `panel:SetScript("OnShow")`; load-tail safeCall wrappers own that slot and already call `panel:Refresh()` (removes order-dependent overwrite).
+- **Library Hardening:** `GetTalentInfoByClass` and both branches of `GetTalentInfo` return nil past a tab's real talent count; event dispatcher logs-and-continues on unhandled events; achievement probes use the documented 14th `isStatistic` return; `addCacheUser` now returns the created user table (fixes nil-cache crash in `GetInventoryItemMixin` player branch on fresh login).
+- **Backdrop Comment Accuracy:** Stale "pre-2.5.3" notes corrected — NineSlice detection is runtime-based (`tooltip.NineSlice`) and verified present on all supported clients.
+- **New Regression Tests:** `Config:SanitizeOffsetBounds` and `Stats:GetItemScoreFromInfoMatchesLink` WoWUnit tests (`/tttest`).
+- **Version Bump:** Bumped version to `0.7.3` across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
 ## 2026-08-21 - v0.7.2: TBC Classic Anniversary Dual-Spec Resolution & API Hardening
 
 - **TBC Anniversary Dual-Spec Resolution:** Fixed premature load-time capability check in `LibClassicInspector` that permanently blocked talent group 2 on TBC Anniversary clients.

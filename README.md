@@ -23,7 +23,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.2` |
+| Public version | `v0.7.3` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -58,17 +58,17 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.7.2 (Recent v0.7.x Updates)
+## What's new in v0.7.3 (Recent v0.7.x Updates)
 
 | Feature / Fix | Description |
 | --- | --- |
-| **TBC Anniversary Dual-Spec Fix** | Resolved an issue where dual specialization was not showing on TBC Classic Anniversary due to a premature file-load capability check. Enabled full secondary talent group inspection and caching on TBC Anniversary clients. |
-| **`C_SpecializationInfo` API Fallback** | Added robust fallback to `C_SpecializationInfo.GetTalentInfo` query structs, matching official Blizzard FrameXML signatures across TBC Anniversary and Classic Era/SoD clients. |
-| **Dual-Spec Tooltip Alignment** | Fixed secondary talent line indentation in compact mode using a localized zero-alpha prefix, ensuring pixel-perfect vertical alignment between primary and secondary talent icons. |
-| **3D Portrait Real-Time Alpha Fade** | Synchronized 3D `PlayerModel` alpha with `GameTooltip:GetAlpha()` in real-time via `OnUpdate` frame tracking so portraits smoothly fade out in lockstep with tooltip text and backdrops. |
-| **3D Portrait Lifecycle & Reset Safety** | Hardened `clearTooltipVisuals` with `ClearModel()` GPU mesh cleanup and `SetAlpha(1.0)` restoration, guaranteeing instant, clean resets on rapid mouse movements across map nodes, spells, and action bars. |
-| **Dead Code Excision** | Removed stale `TacoTipEliteFrame` checks and comments. |
-| **100% Locale Parity & Clean Linting** | Verified 100% key parity across all 11 languages (261/261 keys) and 0 warnings / 0 errors in static analysis across all 21 files. |
+| **Single-Fetch Item Tooltips** | Item tooltips now perform exactly one `GetItemInfo` call per hover; ilvl, GearScore, and HunterScore all share that fetch through the new `TT_GS:GetItemScoreFromInfo` entry point. |
+| **ItemMixin Memoization** | `LibClassicInspector` reuses one `ItemMixin` per inspected slot (keyed by item identity so gear changes rebuild) instead of allocating ~19 fresh mixins on every player hover. |
+| **Overlay Offset Clamping** | Typed X/Y offset fields now clamp to the ±300 slider range, and `SafeSanitizeConfig` repairs out-of-range or corrupt saved offsets (including NaN/infinite values) on every load. |
+| **Options OnShow Lifecycle Fix** | Page builders no longer assign `panel:SetScript("OnShow")`; the load-time safeCall-wrapped handlers own the slot, removing an order-dependent overwrite seam. |
+| **Library Hardening** | Talent getters return nil past a tab's real talent count instead of erroring, the event dispatcher logs-and-continues on unhandled events, and achievement validity probes use Blizzard's documented 14th `isStatistic` return. |
+| **Accurate Backdrop Comments** | Corrected stale "pre-2.5.3" notes: NineSlice-equipped tooltips are verified present on all supported clients; backdrop handling is runtime-detected, not build-gated. |
+| **New Regression Tests** | Added `SanitizeOffsetBounds` and `GetItemScoreFromInfoMatchesLink` WoWUnit tests (run with `/tttest`). |
 
 ## What's new in v0.7.1
 

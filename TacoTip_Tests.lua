@@ -134,6 +134,26 @@ local function RegisterTacoTipTests()
         IsTrue(cfg.tip_style >= 1 and cfg.tip_style <= 5, "tip_style clamped")
     end
 
+    -- Regression for prism-full audit F5: typed offset edit boxes
+    -- historically stored unclamped integers; SafeSanitizeConfig must now
+    -- repair out-of-range / corrupt overlay offsets to slider bounds.
+    function Config:SanitizeOffsetBounds()
+        local cfg = TT:GetDefaults()
+        cfg.character_gs_offset_x = 9999 -- beyond +/-300 slider range
+        cfg.character_gs_offset_y = -9999
+        cfg.inspect_ilvl_offset_y = "corrupt" -- non-numeric garbage
+        cfg.character_ilvl_offset_x = 0 / 0 -- NaN survives type()=="number"
+        cfg.inspect_gs_offset_x = math.huge
+        TT:SafeSanitizeConfig(cfg)
+        IsTrue(cfg.character_gs_offset_x >= -300 and cfg.character_gs_offset_x <= 300,
+            "offset_x clamped into slider range")
+        IsTrue(cfg.character_gs_offset_y >= -300 and cfg.character_gs_offset_y <= 300,
+            "offset_y clamped into slider range")
+        IsTrue(type(cfg.inspect_ilvl_offset_y) == "number", "corrupt offset repaired to number")
+        IsTrue(cfg.character_ilvl_offset_x == cfg.character_ilvl_offset_x, "NaN offset repaired (NaN != NaN)")
+        IsTrue(cfg.inspect_gs_offset_x ~= math.huge, "infinite offset repaired")
+    end
+
     -- ============================================================
     -- TT-Borders: class border applies to players, NEVER bleeds
     -- to non-unit / item tooltips (the reported minimap/world-map bug)
@@ -471,6 +491,21 @@ local function RegisterTacoTipTests()
             local ok3 = pc(GS.GetQuality, GS, 0)
             IsTrue(ok3, "GetQuality(0) safe")
         end
+    end
+
+    -- Regression for prism-full audit F3: GetItemScoreFromInfo must produce
+    -- identical results to the link-based path for a cached item, proving
+    -- the single-fetch tooltip path did not change scoring behavior.
+    function Stats:GetItemScoreFromInfoMatchesLink()
+        local GS = _G.TT_GS
+        Exists(GS, "TT_GS global present")
+        local link = select(2, pc(GetItemInfo, 19019)) or "item:19019:0:0:0:0:0:0"
+        local gsLink, ilvlLink = GS:GetItemScore(link)
+        local gsInfo, ilvlInfo = GS:GetItemScoreFromInfo({ GetItemInfo(link) })
+        IsTrue(gsLink == gsInfo, string.format("GearScore identical via info-table (%s vs %s)",
+            tostring(gsLink), tostring(gsInfo)))
+        IsTrue(ilvlLink == ilvlInfo, string.format("item level identical via info-table (%s vs %s)",
+            tostring(ilvlLink), tostring(ilvlInfo)))
     end
 
     function Stats:PawnNilSafe()

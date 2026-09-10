@@ -1,5 +1,16 @@
 # Progress
 
+## 2026-08-27 - v0.7.3: Performance & Hardening Pass (Prism-Full Audit)
+
+- **Single-Fetch Item Tooltips:** One `GetItemInfo` call per item hover via new `TT_GS:GetItemScoreFromInfo(info)`; ilvl, GearScore and HunterScore share the fetch. Link-based entries retained for overlays/tests.
+- **ItemMixin Memoization:** `LibClassicInspector:GetInventoryItemMixin` memoizes one `ItemMixin` per (cached user, slot) keyed by item identity; ~19 allocations per player hover eliminated.
+- **Overlay Offset Clamping:** Typed offset edit boxes clamp to ±300; `SafeSanitizeConfig` repairs corrupt/out-of-range saved offsets (incl. NaN/infinity) on load.
+- **Options OnShow Lifecycle Fix:** Removed order-dependent `panel:SetScript("OnShow")` assignments from page builders; load-tail safeCall wrappers own the slot.
+- **Library Hardening:** Nil-talent guards in `GetTalentInfoByClass` + both `GetTalentInfo` branches; nil-safe event dispatcher; achievement probes moved to documented 14th `isStatistic` return; `addCacheUser` returns the created user (fixes nil-cache crash for uncached player on fresh login).
+- **Backdrop Comment Accuracy:** "pre-2.5.3" comments corrected to runtime NineSlice detection across `main.lua` and memory bank.
+- **New Regression Tests:** `Config:SanitizeOffsetBounds`, `Stats:GetItemScoreFromInfoMatchesLink` (`/tttest`).
+- **Version Bump:** Bumped version to `0.7.3` across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
 ## 2026-08-21 - v0.7.2: TBC Classic Anniversary Dual-Spec Resolution & API Hardening
 
 - **TBC Anniversary Dual-Spec Resolution:** Fixed premature load-time capability check in `LibClassicInspector` that permanently blocked talent group 2 on TBC Anniversary clients.

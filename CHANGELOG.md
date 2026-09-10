@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.3` | `2026-08-27` | Performance & hardening pass from prism-full audit: single `GetItemInfo` fetch per item tooltip (new `TT_GS:GetItemScoreFromInfo`, HunterScore reuses the fetch), memoized `ItemMixin` allocation in `LibClassicInspector:GetInventoryItemMixin` keyed by item identity, overlay offset clamping (edit-box writer plus `SafeSanitizeConfig` bounds incl. NaN/infinity repair), removed order-dependent options-page `OnShow` overwrites of safeCall wrappers, library hardening (`GetTalentInfoByClass`/`GetTalentInfo` nil-talent guard on both player and inspected branches, nil-safe event dispatcher, achievement validity probes moved to the documented 14th `isStatistic` return), stale "pre-2.5.3" backdrop comments corrected to runtime NineSlice detection, two new regression tests. |
 | `0.7.2` | `2026-08-21` | Fix: TBC Classic Anniversary Dual-Spec Resolution. Resolved premature load-time `hasDualSpec` capability evaluation in `LibClassicInspector`, added `C_SpecializationInfo.GetTalentInfo` query fallback for TBC Anniversary & SoD, registered `PLAYER_TALENT_UPDATE` & `ACTIVE_TALENT_GROUP_CHANGED` dynamically across all dual-spec clients, and guarded talent point summation against nil ranks. |
 | `0.7.1` | `2026-08-20` | Cleanup & Architecture Polish: Completely excised obsolete floating options preview tooltip (`modernShowExampleTooltip`, `previewPane`, `previewHealthBar`, `previewPowerBar`, `previewAnchor`) and dead helper methods across `options.lua` and `main.lua`. All option controls directly update configuration with 0 overhead. Cleaned up options page layout and descriptions across all 11 locale files. Zero luacheck warnings / zero errors across all 21 files. |
 | `0.7.0` | `2026-08-14` | Fix: Minimap & World Map POI / pin / node tooltip flickering resolved. Disabled mouse capture on GameTooltip, preserved true caller frame ownership in GameTooltip_SetDefaultAnchor, and guarded UPDATE_MOUSEOVER_UNIT against falsely hiding non-unit tooltips. Tooltip border edge size default changed to 14px. Deferred border timers converted to cancellable C_Timer.NewTimer handles. |
@@ -29,6 +30,37 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.3] - 2026-08-27
+
+### Performance - 0.7.3
+
+- **Single `GetItemInfo` Fetch Per Item Tooltip:**
+  - Item tooltips previously called `GetItemInfo` once for the ilvl line, again inside `TT_GS:GetItemScore`, and a third time inside `TT_GS:GetItemHunterScore` on every hover of every equippable item.
+  - Added `TT_GS:GetItemScoreFromInfo(info)` which scores from an already-fetched `GetItemInfo` result table; the item tooltip hook now performs exactly one fetch shared by ilvl, GearScore and HunterScore.
+  - `TT_GS:GetItemScore(link)` and `TT_GS:GetItemHunterScore(link, info?)` remain fully backward compatible for frame overlays and other callers.
+- **Memoized `ItemMixin` Allocation in `LibClassicInspector`:**
+  - `GetInventoryItemMixin` allocated a fresh `ItemMixin` per slot per call (~19 allocations on every player hover from GearScore + Pawn scoring loops).
+  - Mixins are now memoized per cached user and slot, keyed by item identity so a gear change in the same slot rebuilds its mixin instead of returning stale data. Entries die with their cache user on FIFO eviction.
+- **Overlay Offset Clamping:**
+  - Typed offset edit boxes now clamp keyboard-entered values to the ±300 slider range (`setOffsetValue`), so a typo cannot push an overlay permanently offscreen.
+  - `SafeSanitizeConfig` repairs out-of-range or corrupt saved offsets (including `"corrupt"` strings, NaN and ±infinity) back to defaults on every load.
+
+### Fixed - 0.7.3
+
+- **Options OnShow Lifecycle (order-dependent overwrite):**
+  - Page builders no longer assign `panel:SetScript("OnShow")`; the load-tail safeCall-wrapped handlers own that slot and already invoke `panel:Refresh()`. Assigning inside the builder silently replaced them after first build.
+- **Library Hardening (`LibClassicInspector`):**
+  - `GetTalentInfoByClass` returns nil past a tab's real talent count instead of raising "attempt to index a nil value"; the same guard was applied to both the player and inspected-unit branches of `GetTalentInfo`.
+  - The event dispatcher logs-and-continues via `geterrorhandler()` when a registered event has no matching handler method, keeping the frame alive instead of erroring on first fire.
+  - Achievement validity probes use Blizzard's documented 14th `isStatistic` return instead of the undocumented 15th return that classic clients do not provide.
+  - `addCacheUser` now returns the created user table so first-use callers (e.g. `GetInventoryItemMixin`) never operate on a nil cache entry.
+
+### Documentation & Testing - 0.7.3
+
+- **Accurate Backdrop Comments:** Corrected stale "pre-2.5.3" notes across `main.lua` and memory bank — NineSlice-equipped tooltips are verified present on all supported clients (Classic Era, TBC Anniversary, Wrath); backdrop handling is runtime-detected via `tooltip.NineSlice`, not build-gated.
+- **New Regression Tests:** Added `SanitizeOffsetBounds` (offset repair incl. NaN/infinity) and `GetItemScoreFromInfoMatchesLink` (single-fetch path produces identical scoring to the link path) WoWUnit tests — run with `/tttest`.
+- **Version metadata bumped to `0.7.3`** across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
 
 ## [0.7.2] - 2026-08-21
 

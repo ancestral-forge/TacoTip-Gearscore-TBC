@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.2"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.3"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or
     (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
@@ -206,6 +206,21 @@ function TT:SafeSanitizeConfig(config)
     end
     if (type(config.tooltip_max_width) ~= "number" or config.tooltip_max_width < 0 or config.tooltip_max_width > 500) then
         config.tooltip_max_width = defaults.tooltip_max_width
+    end
+    -- Character/inspect overlay offsets: typed edit boxes historically wrote
+    -- unclamped integers; repair out-of-range or corrupt saved values to the
+    -- same bounds the offset sliders enforce (options.lua MODERN_OPTION_SLIDER_*).
+    for _, key in ipairs {
+        "character_gs_offset_x", "character_gs_offset_y",
+        "character_ilvl_offset_x", "character_ilvl_offset_y",
+        "inspect_gs_offset_x", "inspect_gs_offset_y",
+        "inspect_ilvl_offset_x", "inspect_ilvl_offset_y",
+    } do
+        local val = config[key]
+        if (type(val) ~= "number" or val ~= val or val == math.huge or val == -math.huge
+                or val < -300 or val > 300) then
+            config[key] = defaults[key] or 0
+        end
     end
     -- NOTE: guild_rank_style was removed in v0.6.x — migrated to guild_rank_alt_style.
     -- Old saved-values are silently ignored by the memoized default merge above.
@@ -2098,9 +2113,12 @@ local function buildTooltipsPage()
 
     builder:Finalize(64)
 
-    panel:SetScript("OnShow", function()
-        if (panel.Refresh) then panel:Refresh() end
-    end)
+    -- NOTE: do NOT assign panel:SetScript("OnShow") here. The load-tail
+    -- wrappers near the bottom of this file install safeCall-wrapped OnShow
+    -- handlers for every page; assigning inside the builder silently
+    -- replaced them once the page was built (order-dependent overwrite).
+    -- The wrapper already invokes panel:Refresh(), which is all this
+    -- handler did.
     panel:SetScript("OnHide", function()
         if (pickerFrame) then
             pickerFrame:Hide()
@@ -2175,6 +2193,15 @@ local function buildTooltipsPage()
 end
 
 local function setOffsetValue(key, value)
+    -- Clamp keyboard-entered offsets so a typo cannot push an overlay
+    -- permanently offscreen (sliders are bounded by their range; these
+    -- edit boxes previously stored any integer verbatim).
+    value = math.floor(value + (value < 0 and -0.5 or 0.5))
+    if (value < MODERN_OPTION_SLIDER_MIN) then
+        value = MODERN_OPTION_SLIDER_MIN
+    elseif (value > MODERN_OPTION_SLIDER_MAX) then
+        value = MODERN_OPTION_SLIDER_MAX
+    end
     TacoTipConfig[key] = value
 
     local editBox = modernOptionsState.offsetEditors[key]
@@ -2329,9 +2356,9 @@ local function buildPositioningPage()
         controls.tooltipDelay:SetValueSilently(math.floor((TacoTipConfig.tooltip_delay or 0) * 1000 + 0.5))
     end
 
-    panel:SetScript("OnShow", function()
-        if (panel.Refresh) then panel:Refresh() end
-    end)
+    -- NOTE: no panel:SetScript("OnShow") here — the load-tail safeCall
+    -- wrappers own the OnShow slot and already call panel:Refresh().
+    -- Assigning here would replace them after first build (F6 fix).
 
     modernOptionsState.pages.positioningBuilt = true
 end
@@ -2483,9 +2510,9 @@ local function buildCharacterInspectPage()
         modernRefreshLockPositionToggle()
     end
 
-    panel:SetScript("OnShow", function()
-        if (panel.Refresh) then panel:Refresh() end
-    end)
+    -- NOTE: no panel:SetScript("OnShow") here — the load-tail safeCall
+    -- wrappers own the OnShow slot and already call panel:Refresh().
+    -- Assigning here would replace them after first build (F6 fix).
 
     modernOptionsState.pages.characterInspectBuilt = true
 end
