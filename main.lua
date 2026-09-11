@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.3"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.4"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -73,15 +73,72 @@ local NewTicker = _G.C_Timer and _G.C_Timer.NewTicker
 local NewTimer = _G.C_Timer and _G.C_Timer.NewTimer
 local CAfter = _G.C_Timer and _G.C_Timer.After
 local GetBestMapForUnit = _G.C_Map and _G.C_Map.GetBestMapForUnit
+-- C_Item namespace (Classic Era 1.15.x, TBC Anniversary 2.5.x and Wrath 3.4.x
+-- all publish it via Blizzard_ObjectAPI; verified against wow-ui-source).
+local Item = _G.Item
+local RequestLoadItemDataByID = _G.C_Item and _G.C_Item.RequestLoadItemDataByID
 local GameTooltip_SetDefaultAnchor = _G.GameTooltip_SetDefaultAnchor
 local UnitClass = _G.UnitClass
 local UnitCanAttack = _G.UnitCanAttack
--- F3: deferred border re-apply timers (cancellable). Declared at module top so
--- the assignments in ApplyTooltipAppearance (565) and onTooltipShow (1446) bind
--- to THESE locals, not implicit globals — a mid-file `local` would be out of
--- scope at the first assignment and silently defeat the flicker fix.
-local borderDeferTimer = nil
-local classBorderDeferTimer = nil
+-- v0.7.4: per-tooltip state. Every timer/generation/refresh handle now lives
+-- on the tooltip frame itself, so clearing/hiding one tooltip can never cancel
+-- or stale-out another tooltip's pending work (the pre-0.7.4 module-level
+-- locals were shared by GameTooltip, ShoppingTooltip1/2, ItemRefTooltip,
+-- WorldMapTooltip and SmallTextTooltip — clearing a shopping tooltip could
+-- cancel the main tooltip's delayed-appearance timer).
+
+-- Per-tooltip lifecycle state, stored on the frame as tooltip._tacoTipState.
+-- All handles are cleared or invalidated by clearTooltipVisuals on every
+-- clear/hide transition.
+---@class tacoTipTooltipState
+---@field generation integer           -- clear/hide epoch; stale callbacks bail on mismatch
+---@field currentUnitGUID string|nil   -- GUID of the unit currently rendered
+---@field currentItemLink string|nil   -- item link currently rendered
+---@field itemLoadCancel function|nil  -- C_Item.ContinueWithCancelOnItemLoad canceler
+---@field delayedTooltipTimer table|nil -- cancellable NewTimer handle (unit-tooltip delay)
+---@field borderDeferTimer table|nil    -- cancellable NewTimer handle (defensive border re-apply)
+---@field classBorderDeferTimer table|nil -- cancellable NewTimer handle (OnShow class-border re-apply)
+---@field fadeTimer table|nil           -- cancellable NewTimer handle (instant fade)
+
+-- Inert fallback state for getTooltipState(nil): keeps the documented
+-- "state is always a table" contract so no call site needs a nil check.
+-- Nothing ever reads this table's fields back (no real tooltip owns it),
+-- except the generation counter which is stateless by design.
+local nilTooltipState = { generation = 0 }
+
+---Return the per-tooltip state table, creating it on first use. When
+---tooltip is nil, returns a shared inert fallback state (generation
+---counter still increments) so callers can index state fields without
+---nil-checks — writes there are simply never read by any real tooltip.
+---@param tooltip table|nil WoW tooltip frame (or any frame used as tooltip)
+---@return tacoTipTooltipState
+local function getTooltipState(tooltip)
+    if (not tooltip) then
+        return nilTooltipState
+    end
+    if (not tooltip._tacoTipState) then
+        tooltip._tacoTipState = { generation = 0 }
+    end
+    return tooltip._tacoTipState
+end
+
+local function cancelTooltipTimer(tooltip, field)
+    local state = getTooltipState(tooltip)
+    local timer = state and state[field]
+    if (timer) then
+        timer:Cancel()
+        state[field] = nil
+    end
+end
+
+local function cancelItemLoadRefresh(tooltip)
+    local state = getTooltipState(tooltip)
+    local cancel = state and state.itemLoadCancel
+    if (cancel) then
+        pcall(cancel)
+        state.itemLoadCancel = nil
+    end
+end
 local UnitExists = _G.UnitExists
 local UnitIsPlayer = _G.UnitIsPlayer
 local UnitIsUnit = _G.UnitIsUnit
@@ -339,7 +396,21 @@ local function getSpecializationIcon(class, specIndex)
 end
 
 local function formatSpecializationText(class, specIndex, p1, p2, p3)
-    local specName = class and specIndex and CI:GetSpecializationName(class, specIndex, true) or nil
+    -- Prefer TacoTip's own per-locale spec-name table (Locale/*.lua); it
+    -- follows the saved addon-language override, which the library's
+    -- GetLocale()-derived table cannot. Fall back to the library's
+    -- localized table when TacoTip's locale hasn't shipped that class.
+    local specName
+    if (class and specIndex) then
+        local tacoNames = _G.TACOTIP_SPEC_NAMES
+        local tacoRow = tacoNames and tacoNames[class]
+        if (tacoRow) then
+            specName = tacoRow[specIndex]
+        end
+        if (not specName) then
+            specName = CI:GetSpecializationName(class, specIndex, true)
+        end
+    end
     if (not specName) then
         return nil
     end
@@ -604,15 +675,21 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
     -- this function returns (TBC Anniversary 2026 can refresh the tooltip
     -- frame after OnTooltipSetUnit completes).
     if ((TacoTipConfig.tooltip_border_use_class or TacoTipConfig.color_class) and isPlayerTooltip) then
-        local deferralGen = tooltip._borderDeferralGen or 0
+        local state = getTooltipState(tooltip)
+        cancelTooltipTimer(tooltip, "borderDeferTimer")
+        local deferralGen = state.generation
         -- Always use a cancellable C_Timer.NewTimer handle so the follow-up
         -- can be cancelled by cancelDeferredAppearance() on tooltip clear /
         -- show. An uncancellable C_Timer.After here could fire on a later
         -- non-unit tooltip (bleed-through) or on a stale unit after rapid
         -- hover churn.
-        borderDeferTimer = NewTimer(0.05, function()
+        local timer
+        timer = NewTimer(0.05, function()
+            if (state.borderDeferTimer == timer) then
+                state.borderDeferTimer = nil
+            end
             safeCall(function()
-                if (tooltip._borderDeferralGen ~= deferralGen) then
+                if (state.generation ~= deferralGen) then
                     return
                 end
                 if (not tooltip or not tooltip:IsShown()) then
@@ -628,6 +705,7 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
                 applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
             end)
         end)
+        state.borderDeferTimer = timer
     end
 
     applyTooltipFonts(tooltip)
@@ -696,12 +774,8 @@ function TacoTip_GSCallback(guid)
     end
 end
 
-local delayedTooltipTimer = nil
-local function cancelDelayedTooltip()
-    if (delayedTooltipTimer) then
-        delayedTooltipTimer:Cancel()
-        delayedTooltipTimer = nil
-    end
+local function cancelDelayedTooltip(tooltip)
+    cancelTooltipTimer(tooltip, "delayedTooltipTimer")
 end
 
 -- F3: track the deferred border re-apply timers so a fast tooltip recycle
@@ -711,35 +785,30 @@ end
 -- C_Timer.NewTimer handle — cancelDelayedTooltip() only cancels the unit
 -- tooltip timer, so these must also be cancelled explicitly on every
 -- clear/show so a stale follow-up can never fire on a later non-unit tooltip.
--- (borderDeferTimer / classBorderDeferTimer are declared at the top of the file.)
-local function cancelDeferredAppearance()
-    if (borderDeferTimer) then
-        borderDeferTimer:Cancel()
-        borderDeferTimer = nil
-    end
-    if (classBorderDeferTimer) then
-        classBorderDeferTimer:Cancel()
-        classBorderDeferTimer = nil
-    end
+-- (borderDeferTimer / classBorderDeferTimer are per-tooltip state fields.)
+local function cancelDeferredAppearance(tooltip)
+    cancelTooltipTimer(tooltip, "borderDeferTimer")
+    cancelTooltipTimer(tooltip, "classBorderDeferTimer")
 end
 
-local fadeTimer = nil
-local function cancelFadeTimer()
-    if (fadeTimer) then
-        fadeTimer:Cancel()
-        fadeTimer = nil
-    end
+local function cancelFadeTimer(tooltip)
+    cancelTooltipTimer(tooltip, "fadeTimer")
 end
 
-local function clearTooltipVisuals(tooltip)
+local function clearTooltipVisuals(tooltip, preservePendingItem)
     if (not tooltip) then
         return
     end
-    tooltip._borderDeferralGen = (tooltip._borderDeferralGen or 0) + 1
+    local state = getTooltipState(tooltip)
+    if (not preservePendingItem) then
+        state.generation = state.generation + 1
+        cancelItemLoadRefresh(tooltip)
+        state.currentItemLink = nil
+    end
 
-    cancelDelayedTooltip()
-    cancelDeferredAppearance()
-    cancelFadeTimer()
+    cancelDelayedTooltip(tooltip)
+    cancelDeferredAppearance(tooltip)
+    cancelFadeTimer(tooltip)
     clearTooltipPlayerClassColor(tooltip)
     resetTooltipBorderToDefault(tooltip)
     clearTooltipGuildLine(tooltip)
@@ -756,10 +825,13 @@ local function clearTooltipVisuals(tooltip)
             tooltip.TacoTipPortrait3D:SetAlpha(1)
         end
     end
-    if (TacoTipPowerBar) then
+    -- The power bar hangs off GameTooltip's status bar only; hiding it from a
+    -- clearing/hiding of any OTHER tooltip frame would also kill it while the
+    -- main tooltip is still open.
+    if (tooltip == GameTooltip and TacoTipPowerBar) then
         TacoTipPowerBar:Hide()
+        stopPowerBarTicker()
     end
-    stopPowerBarTicker()
     if (tooltip._tacoTipPaddingSet and tooltip.ClearPadding) then
         tooltip:ClearPadding()
         tooltip._tacoTipPaddingSet = nil
@@ -767,6 +839,7 @@ local function clearTooltipVisuals(tooltip)
 end
 TT.clearTooltipVisuals = clearTooltipVisuals
 
+local scheduleItemTooltipRefresh
 
 local function onTooltipSetUnit(tooltip)
     local name, tooltipUnit = tooltip:GetUnit()
@@ -777,6 +850,7 @@ local function onTooltipSetUnit(tooltip)
     end
 
     clearTooltipVisuals(tooltip)
+    getTooltipState(tooltip).currentUnitGUID = UnitGUID(tooltipUnit)
     storeTooltipPlayerClassColor(tooltip, tooltipUnit)
 
     if (TacoTipDragButton and TacoTipDragButton:IsShown()) then
@@ -1366,12 +1440,18 @@ local function onTooltipSetUnit(tooltip)
 end
 
 GameTooltip:HookScript("OnTooltipSetUnit", function(tooltip, ...)
-    cancelDelayedTooltip()
+    cancelDelayedTooltip(tooltip)
     local delay = TacoTipConfig.tooltip_delay or 0
-    if (delay > 0 and tooltip == GameTooltip and not InCombatLockdown()) then
-        delayedTooltipTimer = C_Timer.NewTimer(delay, function()
+    if (delay > 0 and tooltip == GameTooltip and not InCombatLockdown() and type(NewTimer) == "function") then
+        local state = getTooltipState(tooltip)
+        local timer
+        timer = NewTimer(delay, function()
+            if (state.delayedTooltipTimer == timer) then
+                state.delayedTooltipTimer = nil
+            end
             safeCall(onTooltipSetUnit, tooltip)
         end)
+        state.delayedTooltipTimer = timer
     else
         safeCall(onTooltipSetUnit, tooltip, ...)
     end
@@ -1381,10 +1461,18 @@ local function itemToolTipHook(self)
     clearTooltipVisuals(self)
 
     local _, itemLink = self:GetItem()
+    if (itemLink) then
+        getTooltipState(self).currentItemLink = itemLink
+    end
     if (itemLink and IsEquippableItem(itemLink)) then
         -- Single GetItemInfo fetch per hover, shared by the ilvl line,
-        -- GearScore and HunterScore below (F3 hot-path fix).
+        -- GearScore and HunterScore below (F3 hot-path fix). If Blizzard
+        -- has not cached the item yet, request its data and re-render this
+        -- exact tooltip when the load lands rather than leaving it blank.
         local itemInfo = { GetItemInfo(itemLink) }
+        if (not itemInfo[2] or not itemInfo[4]) then
+            scheduleItemTooltipRefresh(self, itemLink)
+        end
         if (TacoTipConfig.show_item_level) then
             local ilvl = itemInfo[4]
             if (ilvl and ilvl > 1) then
@@ -1432,6 +1520,52 @@ local function safeItemToolTipHook(self, ...)
     return safeCall(itemToolTipHook, self, ...)
 end
 
+scheduleItemTooltipRefresh = function(tooltip, itemLink)
+    if (not tooltip or not itemLink or not Item or not Item.CreateFromItemLink) then
+        return
+    end
+
+    local itemOk, item = pcall(Item.CreateFromItemLink, Item, itemLink)
+    if (not itemOk or not item or not item.IsItemDataCached or not item.ContinueWithCancelOnItemLoad) then
+        -- No C_Item object API on this client: fall back to a plain data
+        -- request without a completion callback (cue is re-rendered by the
+        -- caller's next natural refresh instead).
+        local itemID = GetItemInfoInstant and GetItemInfoInstant(itemLink)
+        if (RequestLoadItemDataByID and itemID) then
+            pcall(RequestLoadItemDataByID, itemID)
+        end
+        return
+    end
+
+    local cachedOk, isCached = pcall(item.IsItemDataCached, item)
+    if (not cachedOk or isCached) then
+        return
+    end
+
+    local state = getTooltipState(tooltip)
+    local generation = state.generation
+    local cancel
+    local callback = function()
+        if (state.itemLoadCancel == cancel) then
+            state.itemLoadCancel = nil
+        end
+        -- Only repaint if this exact tooltip still shows this exact item
+        -- (generation bump on clear/hide invalidates stale callbacks).
+        if (state.generation ~= generation or state.currentItemLink ~= itemLink
+                or not tooltip:IsShown()) then
+            return
+        end
+        if (tooltip.UpdateTooltip) then
+            pcall(tooltip.UpdateTooltip, tooltip)
+        end
+    end
+    local callbackOk, canceler = pcall(item.ContinueWithCancelOnItemLoad, item, callback)
+    if (callbackOk and type(canceler) == "function") then
+        cancel = canceler
+        state.itemLoadCancel = cancel
+    end
+end
+
 GameTooltip:HookScript("OnTooltipSetItem", safeItemToolTipHook)
 ShoppingTooltip1:HookScript("OnTooltipSetItem", safeItemToolTipHook)
 ShoppingTooltip2:HookScript("OnTooltipSetItem", safeItemToolTipHook)
@@ -1444,13 +1578,25 @@ ItemRefTooltip:HookScript("OnTooltipSetItem", safeItemToolTipHook)
 -- OnShow/backdrop setup - otherwise Blizzard's subsequent SetBackdrop on
 -- the same frame resets the border back to default gray.
 local function onTooltipShow(tooltip)
+    local state = getTooltipState(tooltip)
+    local shownItemLink
+    if (tooltip and tooltip.GetItem) then
+        local itemOk, _, itemLink = pcall(tooltip.GetItem, tooltip)
+        shownItemLink = itemLink
+        if (not itemOk) then
+            shownItemLink = nil
+        end
+    end
+    -- If the same item re-shows (shopping tooltip compare), keep its pending
+    -- item-load registration alive instead of tearing it down and re-requesting.
+    local preservePendingItem = shownItemLink ~= nil and state.currentItemLink == shownItemLink
     local cached = tooltip and tooltip.TacoTipPlayerClassColor
     if (not cached) then
         -- F1: When the tooltip shows for non-unit content (items, spells, UI
         -- elements, options hover-help), the portrait from a previous unit
         -- display must be cleared. OnTooltipCleared may not have fired on
         -- this transition path (e.g. ClearLines + Show in showHoverTooltip).
-        clearTooltipVisuals(tooltip)
+        clearTooltipVisuals(tooltip, preservePendingItem)
         return
     end
     if (not TacoTipConfig.tooltip_border_use_class and not TacoTipConfig.color_class) then
@@ -1473,15 +1619,20 @@ local function onTooltipShow(tooltip)
         return
     end
 
-    local deferralGen = tooltip._borderDeferralGen or 0
+    cancelTooltipTimer(tooltip, "classBorderDeferTimer")
+    local deferralGen = state.generation
     -- Always use a cancellable C_Timer.NewTimer handle so the follow-up
     -- can be cancelled by cancelDeferredAppearance() on tooltip clear /
     -- show. An uncancellable C_Timer.After here could fire on a later
     -- non-unit tooltip (bleed-through) or on a stale unit after rapid
     -- hover churn.
-    classBorderDeferTimer = NewTimer(0, function()
+    local timer
+    timer = NewTimer(0, function()
+        if (state.classBorderDeferTimer == timer) then
+            state.classBorderDeferTimer = nil
+        end
         safeCall(function()
-            if (tooltip._borderDeferralGen ~= deferralGen) then
+            if (state.generation ~= deferralGen) then
                 return
             end
             if (not tooltip or not tooltip:IsShown()) then
@@ -1497,6 +1648,7 @@ local function onTooltipShow(tooltip)
             applyTooltipBorderOverlay(tooltip, nil, refreshed.r, refreshed.g, refreshed.b)
         end)
     end)
+    state.classBorderDeferTimer = timer
 end
 
 local function registerTooltipVisualClearing(tooltipFrame)
@@ -1504,9 +1656,9 @@ local function registerTooltipVisualClearing(tooltipFrame)
         return
     end
     if (tooltipFrame:HasScript("OnTooltipCleared")) then
-        tooltipFrame:HookScript("OnTooltipCleared", function(tFrame, ...)
-            cancelDelayedTooltip()
-            return safeCall(clearTooltipVisuals, tFrame, ...)
+        tooltipFrame:HookScript("OnTooltipCleared", function(tFrame)
+            cancelDelayedTooltip(tFrame)
+            return safeCall(clearTooltipVisuals, tFrame)
         end)
     end
     if (tooltipFrame:HasScript("OnShow")) then
@@ -1515,9 +1667,9 @@ local function registerTooltipVisualClearing(tooltipFrame)
         end)
     end
     if (tooltipFrame:HasScript("OnHide")) then
-        tooltipFrame:HookScript("OnHide", function(tFrame, ...)
-            cancelDelayedTooltip()
-            return safeCall(clearTooltipVisuals, tFrame, ...)
+        tooltipFrame:HookScript("OnHide", function(tFrame)
+            cancelDelayedTooltip(tFrame)
+            return safeCall(clearTooltipVisuals, tFrame)
         end)
     end
 end
@@ -1527,19 +1679,21 @@ for _, ttFrame in ipairs({ GameTooltip, ShoppingTooltip1, ShoppingTooltip2, Item
 end
 
 -- Ensure all visuals are cleared when the tooltip shows non-unit content
--- like spells/buffs or custom non-unit lines.
-GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip, ...)
-    return safeCall(clearTooltipVisuals, tooltip, ...)
+-- like spells/buffs or custom non-unit lines. No varargs: a forwarded
+-- second arg would land in clearTooltipVisuals' preservePendingItem
+-- parameter and skip the generation bump / item-load teardown on clear.
+GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
+    return safeCall(clearTooltipVisuals, tooltip)
 end)
 
 if (GameTooltip.HookScript) then
-    GameTooltip:HookScript("OnTooltipCleared", function(tooltip, ...)
-        return safeCall(clearTooltipVisuals, tooltip, ...)
+    GameTooltip:HookScript("OnTooltipCleared", function(tooltip)
+        return safeCall(clearTooltipVisuals, tooltip)
     end)
 end
 
 GameTooltip:HookScript("OnHide", function()
-    cancelDelayedTooltip()
+    cancelDelayedTooltip(GameTooltip)
     stopPowerBarTicker()
 end)
 
@@ -1976,14 +2130,20 @@ local function onEvent(self, event, ...)
         end
     elseif (event == "UPDATE_MOUSEOVER_UNIT") then
         if (TacoTipConfig.instant_fade and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
-            cancelFadeTimer()
-            fadeTimer = C_Timer.NewTimer(0, function()
+            cancelFadeTimer(GameTooltip)
+            local state = getTooltipState(GameTooltip)
+            local timer
+            timer = NewTimer(0, function()
+                if (state.fadeTimer == timer) then
+                    state.fadeTimer = nil
+                end
                 safeCall(function()
                     if (TacoTipConfig.instant_fade and not UnitExists("mouseover") and GameTooltip and GameTooltip:IsShown() and ((GameTooltip.IsUnit and GameTooltip:IsUnit("mouseover")) or (GameTooltip.GetUnit and select(2, GameTooltip:GetUnit()) == "mouseover"))) then
                         GameTooltip:Hide()
                     end
                 end)
             end)
+            state.fadeTimer = timer
         end
     else -- INVENTORY_READY / TALENTS_READY
         if (TT.InitInspectFrame and InspectModelFrame and InspectPaperDollFrame) then

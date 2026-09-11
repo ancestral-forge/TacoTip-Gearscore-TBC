@@ -625,7 +625,71 @@ local function RegisterTacoTipTests()
         end
     end
 
-    print("|cff44ff44[TacoTip] 9 test groups registered. Type /tttest to run.|r")
+    -- ============================================================
+    -- TT-Lifecycle: v0.7.4 per-tooltip state + duplicate item ids
+    -- ============================================================
+    local Lifecycle = WoWUnit("TacoTip-Lifecycle", "PLAYER_ENTERING_WORLD")
+
+    -- Clearing a probe tooltip must NEVER disturb GameTooltip's own
+    -- per-tooltip state (the pre-0.7.4 module-level timer locals were shared
+    -- across every hooked tooltip frame).
+    function Lifecycle:PerTooltipStateIsolated()
+        Exists(GameTooltip, "GameTooltip present")
+        local probe = CreateFrame("Frame", "TacoTipTestProbeTooltip")
+        local gsState = GameTooltip._tacoTipState
+        local gsGUID = gsState and gsState.currentUnitGUID
+        if (TT.clearTooltipVisuals) then
+            local ok = pc(TT.clearTooltipVisuals, TT, probe)
+            IsTrue(ok, "clearTooltipVisuals(probe) does not error on a plain frame")
+        end
+        IsTrue(GameTooltip._tacoTipState == gsState,
+            "GameTooltip state table untouched by probe cleanup")
+        local gsStateAfter = GameTooltip._tacoTipState
+        IsTrue((gsStateAfter ~= nil and gsStateAfter.currentUnitGUID == gsGUID)
+                or (gsStateAfter == nil and gsState == nil),
+            "GameTooltip per-tooltip fields unchanged by probe cleanup")
+    end
+
+    function Lifecycle:TooltipClearNilSafe()
+        if (TT.clearTooltipVisuals) then
+            local ok = pc(TT.clearTooltipVisuals, TT, nil)
+            IsTrue(ok, "clearTooltipVisuals(nil) safe")
+        end
+    end
+
+    -- Two slots carrying the SAME item id must produce exactly one pending
+    -- registration so the first load callback completes the whole cycle
+    -- (pre-0.7.4: both entries drained by one callback, second fired early).
+    function Lifecycle:DuplicateItemIDsSinglePending()
+        local cb = { guid = "GUID-TEST", items = {} }
+        local id = 19019 -- Wirt's Leg; constant test id, no live API needed
+        local function registerOnce()
+            local alreadyPending = false
+            for _, pendingID in ipairs(cb.items) do
+                if (pendingID == id) then
+                    alreadyPending = true
+                    break
+                end
+            end
+            if (not alreadyPending) then
+                table.insert(cb.items, id)
+            end
+        end
+        registerOnce()
+        registerOnce()
+        AreEqual(#cb.items, 1, "duplicate item id registers exactly one pending entry")
+        -- One callback drain must empty the list and complete the cycle.
+        local seenPending = #cb.items
+        for i = #cb.items, 1, -1 do
+            if (id == cb.items[i]) then
+                table.remove(cb.items, i)
+            end
+        end
+        IsTrue(#cb.items == 0 and seenPending == 1,
+            "single callback completes the pending cycle")
+    end
+
+    print("|cff44ff44[TacoTip] 10 test groups registered. Type /tttest to run.|r")
 end
 
 SLASH_TTTEST1 = "/tttest"

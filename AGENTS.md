@@ -62,7 +62,7 @@
 
 ## Commands & Workflow
 
-- **Version Bumping:** Update `.toc` files (`TacoTip.toc`), `main.lua` `addOnVersion`, `options.lua`, `README.md`, `CHANGELOG.md`, `MEMORY.md`, and `AGENTS.md` simultaneously. Current version: `0.7.3`.
+- **Version Bumping:** Update `.toc` files (`TacoTip.toc`), `main.lua` `addOnVersion`, `options.lua`, `README.md`, `CHANGELOG.md`, `MEMORY.md`, and `AGENTS.md` simultaneously. Current version: `0.7.4`.
 - **Testing:** Add test cases into `TacoTip_Tests.lua` utilizing `pcall` where safe execution is needed against mocked Blizzard APIs.
 - **Memory & Documentation Integrity:**
   - Whenever features, UI dimensions, API signatures, defaults, or architectural rules change, you MUST synchronously update:

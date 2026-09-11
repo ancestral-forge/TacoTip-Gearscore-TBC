@@ -23,7 +23,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.3` |
+| Public version | `v0.7.4` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -57,6 +57,15 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Hostile Level Colors** | Hostile NPC levels in tooltips use Blizzard difficulty coloring (gray / green / yellow / orange / red) for instant danger assessment. |
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
+
+## What's new in v0.7.4 (Latest Update)
+
+| Fix / Change | Description |
+| --- | --- |
+| **Per-Tooltip Lifecycle State** | Every deferred timer (delayed tooltip, border re-applies, instant fade), generation counter and pending item-load handle now live on each tooltip frame instead of shared module-level locals — one tooltip's clear/hide can no longer cancel or stale-out another tooltip's pending work, and the power bar only clears with GameTooltip. |
+| **Uncached Item Retry** | Hovering an equippable item that Blizzard hasn't cached yet now requests its data and repaints when the load lands (generation + exact-link guarded, cancelled on clear/hide), instead of leaving the tooltip without an ilvl/GearScore line until a second hover. |
+| **Duplicate Equipped Items** | Two identical item ids (e.g. matching rings) no longer drain the pending-callback list early — registration is deduped at every Gearscore/Pawn callback site. |
+| **Inspect Hot-Path** | `getOrCreateItemMixin` hoisted to module scope in LibClassicInspector — no per-slot closure allocation on the player-hover GearScore scan. |
 
 ## What's new in v0.7.3 (Recent v0.7.x Updates)
 

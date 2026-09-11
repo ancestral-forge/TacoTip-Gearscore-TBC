@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.4` | `2026-09-10` | Per-tooltip lifecycle state: every timer, generation counter, item-load handle and the power-bar cleanup are now owned per tooltip frame, so clear/hide of one tooltip can no longer cancel another's pending work. Cancellable item-data refresh on uncached equippable items via C_Item continuation (generation + link guarded, with a `C_Item.RequestLoadItemDataByID` fallback and delayed-tooltip timer hardening). Duplicate equipped-item id dedupe at every Gearscore/Pawn callback registration site. `getOrCreateItemMixin` hoisted to module scope in LibClassicInspector (no per-slot closure allocation on the inspect hot path). Three new WoWUnit regression tests. Zero luacheck warnings. |
 | `0.7.3` | `2026-08-27` | Performance & hardening pass from prism-full audit: single `GetItemInfo` fetch per item tooltip (new `TT_GS:GetItemScoreFromInfo`, HunterScore reuses the fetch), memoized `ItemMixin` allocation in `LibClassicInspector:GetInventoryItemMixin` keyed by item identity, overlay offset clamping (edit-box writer plus `SafeSanitizeConfig` bounds incl. NaN/infinity repair), removed order-dependent options-page `OnShow` overwrites of safeCall wrappers, library hardening (`GetTalentInfoByClass`/`GetTalentInfo` nil-talent guard on both player and inspected branches, nil-safe event dispatcher, achievement validity probes moved to the documented 14th `isStatistic` return), stale "pre-2.5.3" backdrop comments corrected to runtime NineSlice detection, two new regression tests. |
 | `0.7.2` | `2026-08-21` | Fix: TBC Classic Anniversary Dual-Spec Resolution. Resolved premature load-time `hasDualSpec` capability evaluation in `LibClassicInspector`, added `C_SpecializationInfo.GetTalentInfo` query fallback for TBC Anniversary & SoD, registered `PLAYER_TALENT_UPDATE` & `ACTIVE_TALENT_GROUP_CHANGED` dynamically across all dual-spec clients, and guarded talent point summation against nil ranks. |
 | `0.7.1` | `2026-08-20` | Cleanup & Architecture Polish: Completely excised obsolete floating options preview tooltip (`modernShowExampleTooltip`, `previewPane`, `previewHealthBar`, `previewPowerBar`, `previewAnchor`) and dead helper methods across `options.lua` and `main.lua`. All option controls directly update configuration with 0 overhead. Cleaned up options page layout and descriptions across all 11 locale files. Zero luacheck warnings / zero errors across all 21 files. |
@@ -30,6 +31,24 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.4] - 2026-09-10
+
+### Fixed - 0.7.4
+
+- **Per-Tooltip Lifecycle State:**
+  - Every deferred timer (delayed tooltip, class border re-apply, defensive border re-apply, instant fade) previously lived in a single module-level local shared by ALL hooked tooltips (`GameTooltip`, `ShoppingTooltip1/2`, `ItemRefTooltip`, `WorldMapTooltip`, `SmallTextTooltip`). Clearing or hiding one tooltip could cancel or stale-out another tooltip's pending appearance work.
+  - All timers, the generation counter and the pending item-load cancel handle now live in a per-tooltip state table on the frame itself (`getTooltipState`), and each timer self-clears its slot on fire.
+  - Power-bar cleanup is now scoped to `GameTooltip` only: clearing the world-map or shopping tooltip no longer hides the power bar under the main tooltip.
+- **Uncached Item Retry:**
+  - Hovering an equippable item whose data Blizzard has not cached yet now requests item data (`Item:CreateFromItemLink` + `ContinueWithCancelOnItemLoad`) and repaints the tooltip when the load lands; the continuation is stored per tooltip and cancelled on clear/hide so a stale load can never repaint a different item.
+  - Clients without the C_Item object API fall back to `C_Item.RequestLoadItemDataByID` for the data request.
+- **Duplicate Equipped Items:**
+  - Two identical equipped item ids (e.g. matching rings) previously registered the id twice; the first load callback drained both pending entries and the second slot's callback completed the cycle prematurely. Registration is now deduped per id at all four callback sites (gearscore main-hand/off-hand/body, pawn).
+
+### Testing - 0.7.4
+
+- New WoWUnit group `TacoTip-Lifecycle`: per-tooltip state isolation (clearing a probe tooltip never touches `GameTooltip`'s state), duplicate-item single-pending-registration assertion, and nil-safe clear. Run with `/tttest`.
 
 ## [0.7.3] - 2026-08-27
 

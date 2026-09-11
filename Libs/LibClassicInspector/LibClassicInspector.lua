@@ -2849,6 +2849,25 @@ local function getCacheUser2(guid)
     return user
 end
 
+-- Memoize one ItemMixin per (cached user, slot), keyed by item identity.
+-- Tooltip consumers call GetInventoryItemMixin for every slot on every
+-- hover; the memoization prevents ~19 fresh ItemMixin allocations per
+-- player tooltip. Declared at module scope so the hot path does not
+-- allocate a fresh closure per call; entries die with their cache user
+-- on FIFO eviction.
+local function getOrCreateItemMixin(user, slot, idKey, createFn)
+    user.itemMixins = user.itemMixins or {}
+    local entry = user.itemMixins[slot]
+    if (entry and entry.id == idKey) then
+        return entry.mixin
+    end
+    local created = createFn()
+    if (created) then
+        user.itemMixins[slot] = { id = idKey, mixin = created }
+    end
+    return created
+end
+
 local function addCacheUser(guid, inventory, talents, achievements, glyphs)
     local user = { ["guid"] = guid }
     if (inventory) then
@@ -3837,29 +3856,11 @@ function lib:GetInventoryItemMixin(unitorguid, slot)
     end
     local n = tonumber(slot) or 0
     assert(n > 0 and n < 20, "inventorySlot is not a valid number (1-19)")
-    -- Memoize one ItemMixin per (cached user, slot), keyed by item identity.
-    -- Tooltip consumers call this getter for every slot on every hover;
-    -- without the cache each call allocated a fresh ItemMixin (~19 per
-    -- player tooltip). The idKey makes a changed item in the same slot
-    -- rebuild its mixin instead of returning stale data; entries die with
-    -- their cache user on FIFO eviction.
-    local function getOrCreateMixin(user, idKey, createFn)
-        user.itemMixins = user.itemMixins or {}
-        local entry = user.itemMixins[n]
-        if (entry and entry.id == idKey) then
-            return entry.mixin
-        end
-        local created = createFn()
-        if (created) then
-            user.itemMixins[n] = { id = idKey, mixin = created }
-        end
-        return created
-    end
     if (guid == UnitGUID("player")) then
         local equippedID = GetInventoryItemID("player", n)
         if (equippedID) then
             local user = getCacheUser(guid) or addCacheUser(guid, nil, nil, nil, nil)
-            return getOrCreateMixin(user, equippedID, function()
+            return getOrCreateItemMixin(user, n, equippedID, function()
                 return Item:CreateFromEquipmentSlot(n)
             end)
         end
@@ -3870,7 +3871,7 @@ function lib:GetInventoryItemMixin(unitorguid, slot)
             if (not itemID) then
                 return nil
             end
-            return getOrCreateMixin(user, itemID, function()
+            return getOrCreateItemMixin(user, n, itemID, function()
                 return Item:CreateFromItemID(itemID)
             end)
         end

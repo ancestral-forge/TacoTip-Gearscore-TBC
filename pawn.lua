@@ -68,13 +68,24 @@ function TT_PAWN:GetItemScore(itemLink, class, specIndex)
 end
 
 local function itemcacheCB(tbl, id)
-    for i = 1, #tbl.items do
+    if (not tbl or not tbl.items or tbl.completed) then
+        return
+    end
+    -- Iterate backward: table.remove shifts later elements left, so a
+    -- forward sweep would skip the element right after a removed match.
+    for i = #tbl.items, 1, -1 do
         if (id == tbl.items[i]) then
             table.remove(tbl.items, i)
         end
     end
-    if (#tbl.items == 0) then
-        TacoTip_GSCallback(tbl.guid)
+    -- Latch so a duplicate-slot registration for an already-drained list
+    -- cannot fire TacoTip_GSCallback twice (two identical rings = two
+    -- ContinueOnItemLoad closures for one pending id).
+    if (#tbl.items == 0 and not tbl.completed) then
+        tbl.completed = true
+        if (TacoTip_GSCallback) then
+            TacoTip_GSCallback(tbl.guid)
+        end
     end
 end
 
@@ -116,7 +127,19 @@ function TT_PAWN:GetScore(unitorguid, useCallback)
                             local itemID = item:GetItemID()
                             if (itemID) then
                                 if (useCallback) then
-                                    table.insert(cb_table.items, itemID)
+                                    -- Dedupe identical item ids before
+                                    -- registering; see gearscore.lua for the
+                                    -- duplicate-slot rationale.
+                                    local alreadyPending = false
+                                    for _, pendingID in ipairs(cb_table.items) do
+                                        if (pendingID == itemID) then
+                                            alreadyPending = true
+                                            break
+                                        end
+                                    end
+                                    if (not alreadyPending) then
+                                        table.insert(cb_table.items, itemID)
+                                    end
                                     item:ContinueOnItemLoad(function()
                                         itemcacheCB(cb_table, itemID)
                                     end)
