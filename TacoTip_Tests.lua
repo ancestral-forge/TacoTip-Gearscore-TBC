@@ -45,8 +45,10 @@ local function RegisterTacoTipTests()
     end
 
     function Core:VersionMetadata()
-        local ok, ver = pc(function() return (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or
-            GetAddOnMetadata(addonName, "Version") end)
+        local ok, ver = pc(function()
+            return (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addonName, "Version")) or
+                GetAddOnMetadata(addonName, "Version")
+        end)
         IsTrue(ok and type(ver) == "string" and ver ~= "", "version metadata readable: " .. tostring(ver))
     end
 
@@ -139,10 +141,10 @@ local function RegisterTacoTipTests()
     -- repair out-of-range / corrupt overlay offsets to slider bounds.
     function Config:SanitizeOffsetBounds()
         local cfg = TT:GetDefaults()
-        cfg.character_gs_offset_x = 9999 -- beyond +/-300 slider range
+        cfg.character_gs_offset_x = 9999      -- beyond +/-300 slider range
         cfg.character_gs_offset_y = -9999
         cfg.inspect_ilvl_offset_y = "corrupt" -- non-numeric garbage
-        cfg.character_ilvl_offset_x = 0 / 0 -- NaN survives type()=="number"
+        cfg.character_ilvl_offset_x = 0 / 0   -- NaN survives type()=="number"
         cfg.inspect_gs_offset_x = math.huge
         TT:SafeSanitizeConfig(cfg)
         IsTrue(cfg.character_gs_offset_x >= -300 and cfg.character_gs_offset_x <= 300,
@@ -182,7 +184,7 @@ local function RegisterTacoTipTests()
             end
         end
         cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b =
-        savedUse, savedR, savedG, savedB
+            savedUse, savedR, savedG, savedB
     end
 
     -- Classic-Era bleed-through: a player tooltip (class border applied) must
@@ -276,7 +278,7 @@ local function RegisterTacoTipTests()
         end
 
         cfg.tooltip_border_use_class, cfg.tooltip_border_color_r, cfg.tooltip_border_color_g, cfg.tooltip_border_color_b =
-        savedUse, savedR, savedG, savedB
+            savedUse, savedR, savedG, savedB
     end
 
     -- ============================================================
@@ -552,6 +554,40 @@ local function RegisterTacoTipTests()
         IsTrue(active == 1 or active == 2, "active talent group is valid (1-2): " .. tostring(active))
     end
 
+    function Stats:DualSpecDimRendering()
+        -- Inactive dual-spec line: spec name renders in lowest GearScore
+        -- quality grey (0.50, 0.50, 0.50 / GRAY_FONT_COLOR), while active
+        -- spec uses class color. The points run [x/x/x] remains clean white
+        -- outside the color code for both active and inactive specs.
+        local okDim, dimText = pc(TT.GetFormattedSpecializationText, TT, "WARRIOR", 1, 10, 5, 3, true)
+        IsTrue(okDim, "GetFormattedSpecializationText(..., dim=true) does not error")
+        Exists(dimText, "dim spec text produced")
+        if (dimText) then
+            local lowerDim = string.lower(dimText)
+            local hasGrey = string.find(lowerDim, "|cff7f7f7f", 1, true) or string.find(lowerDim, "|cff808080", 1, true)
+            local pointsPos = string.find(dimText, "[", 1, true)
+            local closePos = string.find(dimText, "|r", 1, true)
+            IsTrue(hasGrey ~= nil, "dim spec name uses lowest GearScore grey color")
+            IsTrue(pointsPos ~= nil and closePos ~= nil and closePos < pointsPos,
+                "color code closes before the [x/x/x] points run so numbers remain white")
+            local _, openCount = string.gsub(dimText, "|c%x%x%x%x%x%x%x%x", "")
+            local _, closeCount = string.gsub(dimText, "|r", "")
+            IsTrue(openCount == closeCount, "color codes balanced (no nesting leaks)")
+            local okActive, activeText = pc(TT.GetFormattedSpecializationText, TT, "WARRIOR", 1, 10, 5, 3, false)
+            IsTrue(okActive, "GetFormattedSpecializationText(..., dim=false) does not error")
+            if (activeText) then
+                local lowerActive = string.lower(activeText)
+                local activeHasGrey = string.find(lowerActive, "|cff7f7f7f", 1, true) or string.find(lowerActive, "|cff808080", 1, true)
+                IsTrue(activeHasGrey == nil,
+                    "non-dim (active) spec text carries class color, not grey")
+                local activePointsPos = string.find(activeText, "[", 1, true)
+                local activeClosePos = string.find(activeText, "|r", 1, true)
+                IsTrue(activePointsPos ~= nil and activeClosePos ~= nil and activeClosePos < activePointsPos,
+                    "active spec color code closes before points run so numbers remain white")
+            end
+        end
+    end
+
     -- ============================================================
     -- TT-Mover: tooltip mover sync is callable and nil-safe
     -- ============================================================
@@ -646,7 +682,7 @@ local function RegisterTacoTipTests()
             "GameTooltip state table untouched by probe cleanup")
         local gsStateAfter = GameTooltip._tacoTipState
         IsTrue((gsStateAfter ~= nil and gsStateAfter.currentUnitGUID == gsGUID)
-                or (gsStateAfter == nil and gsState == nil),
+            or (gsStateAfter == nil and gsState == nil),
             "GameTooltip per-tooltip fields unchanged by probe cleanup")
     end
 

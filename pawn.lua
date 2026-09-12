@@ -51,12 +51,15 @@ local function getPlayerGUID(arg)
     return nil
 end
 
-function TT_PAWN:GetItemScore(itemLink, class, specIndex)
+function TT_PAWN:GetItemScore(itemLink, class, specIndex, scaleName)
     if (itemLink and class and specIndex) then
         if (type(PawnGetItemData) == "function") then
             local ok, item = pcall(PawnGetItemData, itemLink)
             if (ok and item and type(PawnGetSingleValueFromItem) == "function") then
-                local scaleName = "\"Classic\":" .. class .. specIndex
+                -- scaleName is passed down from GetScore (built once per
+                -- scoring pass) so 18 slots share one string instead of
+                -- rebuilding the concat per equipped item.
+                scaleName = scaleName or ("\"Classic\":" .. class .. specIndex)
                 local okScore, _, score = pcall(PawnGetSingleValueFromItem, item, scaleName)
                 if (okScore and score) then
                     return tonumber(score) or 0
@@ -120,7 +123,7 @@ function TT_PAWN:GetScore(unitorguid, useCallback)
                     local item = CI:GetInventoryItemMixin(guid, i)
                     if (item) then
                         if (item:IsItemDataCached()) then
-                            local tempScore = TT_PAWN:GetItemScore(item:GetItemLink(), class, spec)
+                            local tempScore = TT_PAWN:GetItemScore(item:GetItemLink(), class, spec, scaleName)
                             pawnScore = pawnScore + tempScore
                         else
                             IsReady = false

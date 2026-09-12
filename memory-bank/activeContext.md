@@ -1,5 +1,15 @@
 # Active Context
 
+## 2026-09-11 - v0.7.5: Dual-Spec Lowest GearScore Grey Styling & Hot-Path Gates (Prism-Full Audit)
+
+- **Dual-Spec Active/Inactive Rendering Fix:** Inactive spec name renders in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR` / `GS_Quality[BRACKET_SIZE]`), active spec name renders in its class color, and talent point numbers `[x/x/x]` render in clean white outside the color code for both specs. Compact mode preserves the invisible zero-alpha `|c00000000%s: |r` alignment prefix. New WoWUnit test `Stats:DualSpecDimRendering`. Non-unit visual isolation verified with `clearTooltipVisuals` across all clear/hide/show transitions.
+- **MODIFIER_STATE_CHANGED Gate:** full `SetUnit` rebuild only when a player tooltip is shown AND `tip_style` is 2/4 (the shift-sensitive styles).
+- **Mouse-Anchor Idle Skip:** `TacoTipMouseAnchor` OnUpdate returns immediately while `anchor_mouse` is disabled.
+- **Item Hook Feature Gate:** `IsEquippableItem`/`GetItemInfo`/pending-load skipped when both `show_item_level` and `show_gs_items` are off.
+- **Pawn Scale-Name Reuse:** scale name built once per `TT_PAWN:GetScore` pass, threaded through `GetItemScore`.
+- **Options Config Integrity:** non-Wrath `Refresh` no longer force-writes `show_achievement_points = false` into saved config (render stays `CI:IsWotlk()`-gated).
+- **Version Bump:** Bumped version to `0.7.5` across `TacoTip.toc`, `main.lua`, `options.lua`, `README.md`, `CHANGELOG.md`, `AGENTS.md`, and memory bank.
+
 ## 2026-08-27 - v0.7.3: Performance & Hardening Pass (Prism-Full Audit)
 
 - **Single-Fetch Item Tooltips:** Item tooltip hook performs exactly one `GetItemInfo` call per hover; new `TT_GS:GetItemScoreFromInfo(info)` entry point is shared by the ilvl line, GearScore and HunterScore. `GetItemScore(link)` / `GetItemHunterScore(link, info?)` remain backward compatible.

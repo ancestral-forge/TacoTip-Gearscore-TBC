@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.4"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.5"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -395,7 +395,7 @@ local function getSpecializationIcon(class, specIndex)
     return bestTexture
 end
 
-local function formatSpecializationText(class, specIndex, p1, p2, p3)
+local function formatSpecializationText(class, specIndex, p1, p2, p3, dim)
     -- Prefer TacoTip's own per-locale spec-name table (Locale/*.lua); it
     -- follows the saved addon-language override, which the library's
     -- GetLocale()-derived table cannot. Fall back to the library's
@@ -418,12 +418,21 @@ local function formatSpecializationText(class, specIndex, p1, p2, p3)
     local iconTexture = getSpecializationIcon(class, specIndex)
     local iconText = iconTexture and string.format("|T%s:14:14:0:0:64:64:4:60:4:60|t ", tostring(iconTexture)) or ""
     local classColor = getClassColor(class)
-    local coloredName = classColor and colorizeText(specName, classColor.r, classColor.g, classColor.b) or specName
+    -- Inactive dual-spec run: spec name is greyed out using lowest GearScore
+    -- quality color (0.50, 0.50, 0.50 / GRAY_FONT_COLOR), while the active
+    -- spec uses class color. The color code is applied strictly to specName
+    -- so talent numbers [p1/p2/p3] remain clean white for both specs.
+    local coloredName
+    if (dim) then
+        coloredName = colorizeText(specName, 0.50, 0.50, 0.50)
+    else
+        coloredName = classColor and colorizeText(specName, classColor.r, classColor.g, classColor.b) or specName
+    end
     return string.format("%s%s [%d/%d/%d]", iconText, coloredName, p1 or 0, p2 or 0, p3 or 0)
 end
 
-TT.GetFormattedSpecializationText = function(self, class, specIndex, p1, p2, p3)
-    return formatSpecializationText(class, specIndex, p1, p2, p3)
+TT.GetFormattedSpecializationText = function(self, class, specIndex, p1, p2, p3, dim)
+    return formatSpecializationText(class, specIndex, p1, p2, p3, dim)
 end
 
 local function ensureTooltipPortrait(tooltip)
@@ -1175,13 +1184,17 @@ local function onTooltipSetUnit(tooltip)
                         end
                     end
                     if (spec1 and spec1 ~= spec2) then
-                        local specText = formatSpecializationText(class, spec1, x1, x2, x3)
+                        -- Inactive spec: spec name rendered in lowest GearScore
+                        -- quality grey (0.50, 0.50, 0.50 / GRAY_FONT_COLOR)
+                        -- inside formatSpecializationText, with talent numbers
+                        -- remaining clean white.
+                        local specText = formatSpecializationText(class, spec1, x1, x2, x3, true)
                         if (wide_style) then
                             tinsert(linesToAdd,
-                                { " ", string.format("|c99ffffff%s|r", specText), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
-                                    .g, NORMAL_FONT_COLOR.b, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b })
+                                { " ", specText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
+                                    .g, NORMAL_FONT_COLOR.b, 1, 1, 1 })
                         else
-                            tinsert(linesToAdd, { string.format("|c00000000%s: |r|c99ffffff%s|r", L["Talents"], specText), 1, 1, 1 })
+                            tinsert(linesToAdd, { string.format("|c00000000%s: |r%s", L["Talents"], specText), 1, 1, 1 })
                         end
                     end
                 elseif (active == 1) then
@@ -1199,13 +1212,17 @@ local function onTooltipSetUnit(tooltip)
                     -- different tree. Prevents the same spec being printed
                     -- twice when both dual-spec slots match.
                     if (spec2 and spec2 ~= spec1) then
-                        local specText = formatSpecializationText(class, spec2, y1, y2, y3)
+                        -- Inactive spec: spec name rendered in lowest GearScore
+                        -- quality grey (0.50, 0.50, 0.50 / GRAY_FONT_COLOR)
+                        -- inside formatSpecializationText, with talent numbers
+                        -- remaining clean white.
+                        local specText = formatSpecializationText(class, spec2, y1, y2, y3, true)
                         if (wide_style) then
                             tinsert(linesToAdd,
-                                { " ", string.format("|c99ffffff%s|r", specText), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
-                                    .g, NORMAL_FONT_COLOR.b, GRAY_FONT_COLOR.r, GRAY_FONT_COLOR.g, GRAY_FONT_COLOR.b })
+                                { " ", specText, NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR
+                                    .g, NORMAL_FONT_COLOR.b, 1, 1, 1 })
                         else
-                            tinsert(linesToAdd, { string.format("|c00000000%s: |r|c99ffffff%s|r", L["Talents"], specText), 1, 1, 1 })
+                            tinsert(linesToAdd, { string.format("|c00000000%s: |r%s", L["Talents"], specText), 1, 1, 1 })
                         end
                     end
                 end
@@ -1464,7 +1481,9 @@ local function itemToolTipHook(self)
     if (itemLink) then
         getTooltipState(self).currentItemLink = itemLink
     end
-    if (itemLink and IsEquippableItem(itemLink)) then
+    -- Both item features off: skip the IsEquippableItem/GetItemInfo work
+    -- entirely instead of fetching data no line will ever display.
+    if (itemLink and (TacoTipConfig.show_item_level or TacoTipConfig.show_gs_items) and IsEquippableItem(itemLink)) then
         -- Single GetItemInfo fetch per hover, shared by the ilvl line,
         -- GearScore and HunterScore below (F3 hot-path fix). If Blizzard
         -- has not cached the item yet, request its data and re-render this
@@ -1706,6 +1725,12 @@ local function CreateMouseAnchor()
     TacoTipMouseAnchor:SetSize(1, 1)
     TacoTipMouseAnchor:SetPoint("CENTER", UIParent, "BOTTOMLEFT", 0, 0)
     TacoTipMouseAnchor:SetScript("OnUpdate", function(self)
+        -- The anchor persists for the whole session once created; skip all
+        -- work while mouse anchoring is disabled so the per-frame cursor
+        -- read only runs while a tooltip can actually consume it.
+        if (not TacoTipConfig.anchor_mouse) then
+            return
+        end
         local cx, cy = GetCursorPosition()
         local scale = UIParent:GetEffectiveScale()
         self:ClearAllPoints()
@@ -2062,9 +2087,17 @@ local function onEvent(self, event, ...)
             TT:RefreshCharacterFrame()
         end
     elseif (event == "MODIFIER_STATE_CHANGED") then
-        local unit = resolveTooltipUnit(GameTooltip)
-        if (unit and UnitIsPlayer(unit)) then
-            GameTooltip:SetUnit(unit)
+        -- Shift re-render (wide/mini style toggle via IsShiftKeyDown in
+        -- onTooltipSetUnit) only matters when a player tooltip is actually
+        -- on screen AND the configured tip_style reads the shift key
+        -- (styles 2/4). Everything else would be a full SetUnit rebuild on
+        -- every modifier press AND release for no visual change.
+        if (GameTooltip and GameTooltip:IsShown()
+                and (TacoTipConfig.tip_style == 2 or TacoTipConfig.tip_style == 4)) then
+            local unit = resolveTooltipUnit(GameTooltip)
+            if (unit and UnitIsPlayer(unit)) then
+                GameTooltip:SetUnit(unit)
+            end
         end
     elseif (event == "UNIT_TARGET") then
         local unit = ...

@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.4"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.5"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or
     (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
@@ -1669,7 +1669,11 @@ local function buildRootPage()
             controls.rootShowAchievementPoints:SetChecked(TacoTipConfig.show_achievement_points)
             controls.rootShowAchievementPoints:SetDisabled(false)
         else
-            TacoTipConfig.show_achievement_points = false
+            -- Non-Wrath clients: the feature is unavailable in-game, but the
+            -- saved preference is preserved so it survives a later WotLK
+            -- session. The disabled control simply reflects the off state;
+            -- the tooltip render path is gated on CI:IsWotlk() anyway, so a
+            -- stale saved true on Era/TBC can never display anything.
             controls.rootShowAchievementPoints:SetChecked(false)
             controls.rootShowAchievementPoints:SetDisabled(true)
         end

@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.5` | `2026-09-11` | Dual-spec active/inactive rendering fixed: the inactive spec name renders in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR`), the active spec name renders in its class color, and talent point numbers `[x/x/x]` render in clean white for both specs. New `Stats:DualSpecDimRendering` regression test. Performance: `MODIFIER_STATE_CHANGED` re-render gated to shown tooltips on shift-sensitive styles (2/4), mouse-anchor `OnUpdate` no-ops while mouse anchoring is disabled, item tooltip hook skips `IsEquippableItem`/`GetItemInfo` when both item features are off, Pawn scale name built once per scoring pass. Options: non-Wrath clients no longer force-write `show_achievement_points = false` into saved config (render path stays WotLK-gated). |
 | `0.7.4` | `2026-09-10` | Per-tooltip lifecycle state: every timer, generation counter, item-load handle and the power-bar cleanup are now owned per tooltip frame, so clear/hide of one tooltip can no longer cancel another's pending work. Cancellable item-data refresh on uncached equippable items via C_Item continuation (generation + link guarded, with a `C_Item.RequestLoadItemDataByID` fallback and delayed-tooltip timer hardening). Duplicate equipped-item id dedupe at every Gearscore/Pawn callback registration site. `getOrCreateItemMixin` hoisted to module scope in LibClassicInspector (no per-slot closure allocation on the inspect hot path). Three new WoWUnit regression tests. Zero luacheck warnings. |
 | `0.7.3` | `2026-08-27` | Performance & hardening pass from prism-full audit: single `GetItemInfo` fetch per item tooltip (new `TT_GS:GetItemScoreFromInfo`, HunterScore reuses the fetch), memoized `ItemMixin` allocation in `LibClassicInspector:GetInventoryItemMixin` keyed by item identity, overlay offset clamping (edit-box writer plus `SafeSanitizeConfig` bounds incl. NaN/infinity repair), removed order-dependent options-page `OnShow` overwrites of safeCall wrappers, library hardening (`GetTalentInfoByClass`/`GetTalentInfo` nil-talent guard on both player and inspected branches, nil-safe event dispatcher, achievement validity probes moved to the documented 14th `isStatistic` return), stale "pre-2.5.3" backdrop comments corrected to runtime NineSlice detection, two new regression tests. |
 | `0.7.2` | `2026-08-21` | Fix: TBC Classic Anniversary Dual-Spec Resolution. Resolved premature load-time `hasDualSpec` capability evaluation in `LibClassicInspector`, added `C_SpecializationInfo.GetTalentInfo` query fallback for TBC Anniversary & SoD, registered `PLAYER_TALENT_UPDATE` & `ACTIVE_TALENT_GROUP_CHANGED` dynamically across all dual-spec clients, and guarded talent point summation against nil ranks. |
@@ -31,6 +32,28 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.5] - 2026-09-11
+
+### Fixed - 0.7.5
+
+- **Dual-Spec Active/Inactive Rendering:**
+  - The inactive spec line was previously wrapped in an outer dim code at the call sites, but `formatSpecializationText` emits its own class-color code internally; WoW color codes do not nest, and font strings do not support alpha dimming codes.
+  - The formatter now colors the inactive spec name in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR`), while the active spec name keeps its class color. Talent numbers `[x/x/x]` are placed outside the colored name run, rendering in clean white text for both specs.
+  - Compact mode's invisible zero-alpha `|c00000000%s: |r` alignment prefix is preserved; the icon keeps full alpha so spec icons stay readable.
+- **Options Config Integrity:**
+  - The root options page no longer force-writes `TacoTipConfig.show_achievement_points = false` on non-Wrath clients; the saved preference survives a later WotLK session. Display remains gated on `CI:IsWotlk()` in the tooltip render path, so a stale saved value can never display anything on Era/TBC.
+
+### Performance - 0.7.5
+
+- **`MODIFIER_STATE_CHANGED` Gate:** modifier key press/release no longer triggers a full `GameTooltip:SetUnit` rebuild unless a player tooltip is actually shown and the configured `tip_style` reads the shift key (styles 2/4). Styles 1/3/5 and hidden tooltips now skip the rebuild entirely.
+- **Mouse-Anchor `OnUpdate` Idle Skip:** the persistent mouse-anchor frame skips cursor reads/repositioning while `anchor_mouse` is disabled instead of running every frame for the whole session.
+- **Item Hook Feature Gate:** with both `show_item_level` and `show_gs_items` disabled, the item tooltip hook skips `IsEquippableItem`/`GetItemInfo` and the pending-load registration entirely.
+- **Pawn Scale-Name Reuse:** `TT_PAWN:GetScore` builds the `"Classic":CLASS<spec>` scale name once per scoring pass and threads it through `TT_PAWN:GetItemScore`, instead of rebuilding the concat for each of up to 18 equipped slots.
+
+### Testing - 0.7.5
+
+- New WoWUnit test `Stats:DualSpecDimRendering`: dim output must contain lowest GearScore quality grey (`0.50, 0.50, 0.50` / `|cff7f7f7f` / `|cff808080`) on the spec name, the `|r` code must close before the `[x/x/x]` points run (leaving talent numbers clean white), color codes must be balanced (no nesting leaks), and the non-dim (active) variant must carry class color without grey. Run with `/tttest`.
 
 ## [0.7.4] - 2026-09-10
 

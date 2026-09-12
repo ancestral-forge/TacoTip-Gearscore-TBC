@@ -23,7 +23,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.4` |
+| Public version | `v0.7.5` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -58,7 +58,18 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.7.4 (Latest Update)
+## What's new in v0.7.5 (Latest Update)
+
+| Fix / Change | Description |
+| --- | --- |
+| **Dual-Spec Active/Inactive Rendering** | The inactive spec now renders in its class color at ~60% alpha, so you can see at a glance which talent spec is currently active. (Previously the dim wrapper was silently defeated by the line's own class-color code and both specs rendered identically.) Active spec keeps full class color. |
+| **Modifier-Key Rebuild Gate** | Shift/other modifier presses no longer force a full tooltip rebuild unless a player tooltip is on screen and the selected tooltip style actually uses the shift toggle (styles 2/4). |
+| **Idle Mouse-Anchor Skip** | The mouse-anchor frame stops reading the cursor every frame while mouse anchoring is disabled in options. |
+| **Item Tooltip Feature Gate** | With both item level and item GearScore disabled, item tooltips skip all item-data fetching. |
+| **Options Config Integrity** | Non-Wrath clients no longer rewrite the saved `show_achievement_points` preference to `false`; your preference survives switching between clients. |
+| **Pawn Scoring Allocation** | The Pawn scale name is built once per scoring pass instead of once per equipped item. |
+
+## What's new in v0.7.4 (Recent v0.7.x Update)
 
 | Fix / Change | Description |
 | --- | --- |
