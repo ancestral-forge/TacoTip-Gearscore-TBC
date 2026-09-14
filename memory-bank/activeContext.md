@@ -1,5 +1,15 @@
 # Active Context
 
+## 2026-09-13 - v0.7.6: Enterprise Audit, 3D Portrait Resizing & Zero-Allocation Pipeline
+
+- **3D Portrait Resizing:** Increased base 3D model viewport dimensions from `60x80` to `72x96` (+20% size increase, strictly maintaining exact 3:4 aspect ratio with integer dimensions at 50/100/150/200% scale). Throttled model `OnUpdate` alpha synchronization to 20Hz (0.05s) using parent frame alpha caching.
+- **Zero-Allocation Hover Pipeline:** Implemented static buffer pooling (`pooledLinesToAdd`, `pooledTooltipText` in `main.lua`) and zero-allocation scalar extraction in `gearscore.lua` (`scoreFromItemValues`), eliminating transient table creation and GC spikes during rapid mouseover scans.
+- **SharedMedia Resolution Caching:** Added lazy caching layer in `options.lua` with invalidation hooks (`TT:InvalidateResolvedMediaCache`), converting heavy $O(N \log N)$ sorting and dropdown rebuilding into instant $O(1)$ table reads on every unit hover.
+- **Lifecycle & Event Hardening:** Gated `TacoTipPowerBar:OnEvent` to `IsShown()` and dynamically unregistered events on ticker halt; deduplicated `GameTooltip` `OnTooltipCleared`/`OnHide` hooks in `main.lua`; gated `UNIT_TARGET` processing behind `GameTooltip:IsShown()` and `show_target`.
+- **Friendly Level Coloring:** Enforced clean white `|cFFFFFFFF` rendering for friendly player levels.
+- **Verification & Tests:** Updated and added tests in `TacoTip_Tests.lua` (`Portrait:DefaultSizeIs34Ratio`, `Portrait:ScaledSizeKeepsRatio`, `Borders:MediaResolutionCaching`). Passed `luacheck .` with 0 warnings across all 21 files.
+- **Version Bump:** Bumped version to `0.7.6` across manifests, runtime, and documentation.
+
 ## 2026-09-11 - v0.7.5: Dual-Spec Lowest GearScore Grey Styling & Hot-Path Gates (Prism-Full Audit)
 
 - **Dual-Spec Active/Inactive Rendering Fix:** Inactive spec name renders in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR` / `GS_Quality[BRACKET_SIZE]`), active spec name renders in its class color, and talent point numbers `[x/x/x]` render in clean white outside the color code for both specs. Compact mode preserves the invisible zero-alpha `|c00000000%s: |r` alignment prefix. New WoWUnit test `Stats:DualSpecDimRendering`. Non-unit visual isolation verified with `clearTooltipVisuals` across all clear/hide/show transitions.

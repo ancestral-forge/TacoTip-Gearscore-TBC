@@ -1,5 +1,15 @@
 # Progress
 
+## 2026-09-13 - v0.7.6: Enterprise Audit, 3D Portrait Resizing & Performance Optimization
+
+- **3D Portrait Resizing:** Enlarged 3D character portrait base dimensions from `60x80` to `72x96` (clean integer scaling at all stops: 36x48, 72x96, 108x144, 144x192). Throttled model `OnUpdate` alpha sync to 20Hz (0.05s).
+- **Zero-Allocation Tooltip Pipeline:** Pre-allocated pooled buffers (`pooledLinesToAdd`, `pooledTooltipText`) in `main.lua` and zero-allocation `scoreFromItemValues` in `gearscore.lua` eliminating GC churn on unit hover.
+- **SharedMedia Resolution Caching:** Added lazy caching layer in `options.lua` with invalidation hooks, converting $O(N \log N)$ sorting into $O(1)$ table lookups.
+- **Event Lifecycle Hardening:** TacoTipPowerBar event handling gated on `IsShown()` and dynamically unregistered on ticker stop; deduplicated GameTooltip hooks; gated `UNIT_TARGET` handling.
+- **Friendly Level Coloring:** Enforced clean white `|cFFFFFFFF` rendering for friendly player levels.
+- **Testing & Verification:** Added `Portrait:DefaultSizeIs34Ratio`, `Portrait:ScaledSizeKeepsRatio`, `Borders:MediaResolutionCaching` in `TacoTip_Tests.lua`. 0 warnings in `luacheck .` across all 21 files.
+- **Version Bump:** Bumped version to `0.7.6` across all manifests and documentation.
+
 ## 2026-08-27 - v0.7.3: Performance & Hardening Pass (Prism-Full Audit)
 
 - **Single-Fetch Item Tooltips:** One `GetItemInfo` call per item hover via new `TT_GS:GetItemScoreFromInfo(info)`; ilvl, GearScore and HunterScore share the fetch. Link-based entries retained for overlays/tests.

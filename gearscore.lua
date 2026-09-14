@@ -195,9 +195,7 @@ end
 -- prefer TT_GS:GetItemScoreFromInfo so one hover performs exactly one
 -- GetItemInfo call instead of one per scoring consumer.
 -- @param info result of GetItemInfo(itemLink) (may be nil while uncached)
--- @return number gearScore, number itemLevel, number r, number g, number b, string|nil equipLoc
-local function scoreFromItemInfo(info, itemLinkFallback)
-    local _, itemLinkOut, ItemRarity, ItemLevel, _, _, _, _, ItemEquipLoc = unpack(info or {})
+local function scoreFromItemValues(itemLinkOut, ItemRarity, ItemLevel, ItemEquipLoc, itemLinkFallback)
     if (not itemLinkOut and itemLinkFallback and RequestLoadItemDataByID) then
         local itemID = tonumber(string.match(itemLinkFallback, "item:(%d+)"))
         if (itemID) then
@@ -253,6 +251,25 @@ local function scoreFromItemInfo(info, itemLinkFallback)
     return 0, 0, 0.1, 0.1, 0.1, 0
 end
 
+-- Resolves the raw item data GearScore needs from a pre-fetched GetItemInfo
+-- result table. Callers that already hold the info (e.g. tooltip hooks) MUST
+-- prefer TT_GS:GetItemScoreFromInfo so one hover performs exactly one
+-- GetItemInfo call instead of one per scoring consumer.
+-- @param info result of GetItemInfo(itemLink) (may be nil while uncached)
+-- @return number gearScore, number itemLevel, number r, number g, number b, string|nil equipLoc
+local function scoreFromItemInfo(info, itemLinkFallback)
+    if (not info) then
+        if (itemLinkFallback and RequestLoadItemDataByID) then
+            local itemID = tonumber(string.match(itemLinkFallback, "item:(%d+)"))
+            if (itemID) then
+                pcall(RequestLoadItemDataByID, itemID)
+            end
+        end
+        return 0, 0, 0.1, 0.1, 0.1, 0
+    end
+    return scoreFromItemValues(info[2], info[3], info[4], info[9], itemLinkFallback)
+end
+
 -- Public entry: score from a caller-provided GetItemInfo result table.
 -- Performs no GetItemInfo call of its own; see scoreFromItemInfo.
 function TT_GS:GetItemScoreFromInfo(info)
@@ -265,7 +282,8 @@ function TT_GS:GetItemScore(ItemLink)
     if not (ItemLink) then
         return 0, 0, 0.1, 0.1, 0.1
     end
-    return scoreFromItemInfo({ GetItemInfo(ItemLink) }, ItemLink)
+    local _, itemLinkOut, itemRarity, itemLevel, _, _, _, _, itemEquipLoc = GetItemInfo(ItemLink)
+    return scoreFromItemValues(itemLinkOut, itemRarity, itemLevel, itemEquipLoc, ItemLink)
 end
 
 -- Hunter-adjusted score. Accepts an optional pre-fetched GetItemInfo table

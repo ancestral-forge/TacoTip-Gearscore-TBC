@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.5"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.6"
 local tinsert = tinsert or table.insert
 
 local interfaceVersion = select(4, GetBuildInfo()) or 0
@@ -177,9 +177,14 @@ local function isOtherPlayersPet(unit)
 end
 
 local function stopPowerBarTicker()
-    if (TacoTipPowerBar and TacoTipPowerBar.updateTicker) then
-        TacoTipPowerBar.updateTicker:Cancel()
-        TacoTipPowerBar.updateTicker = nil
+    if (TacoTipPowerBar) then
+        if (TacoTipPowerBar.updateTicker) then
+            TacoTipPowerBar.updateTicker:Cancel()
+            TacoTipPowerBar.updateTicker = nil
+        end
+        if (TacoTipPowerBar.UnregisterAllEvents) then
+            TacoTipPowerBar:UnregisterAllEvents()
+        end
     end
 end
 
@@ -206,6 +211,9 @@ local function registerSharedMediaCallbacks()
         if (media and media.RegisterCallback) then
             media.RegisterCallback(TT, "LibSharedMedia_Registered", function(_, mediatype)
                 if (mediatype == "font" or mediatype == "statusbar" or mediatype == "background" or mediatype == "border") then
+                    if (TT.InvalidateResolvedMediaCache) then
+                        TT:InvalidateResolvedMediaCache()
+                    end
                     refreshOptionsUI()
                 end
             end)
@@ -435,6 +443,21 @@ TT.GetFormattedSpecializationText = function(self, class, specIndex, p1, p2, p3,
     return formatSpecializationText(class, specIndex, p1, p2, p3, dim)
 end
 
+local function onPortraitModelUpdate(self, elapsed)
+    self.ttElapsed = (self.ttElapsed or 0) + (elapsed or 0)
+    if (self.ttElapsed < 0.05) then
+        return
+    end
+    self.ttElapsed = 0
+    local parent = self:GetParent()
+    if (parent and parent.GetAlpha) then
+        local a = parent:GetAlpha()
+        if (self:GetAlpha() ~= a) then
+            self:SetAlpha(a)
+        end
+    end
+end
+
 local function ensureTooltipPortrait(tooltip)
     if (not tooltip) then
         return nil
@@ -447,24 +470,10 @@ local function ensureTooltipPortrait(tooltip)
                 tooltip.TacoTipPortrait3D = model
                 tooltip.TacoTipPortrait3D:SetFrameLevel(tooltip:GetFrameLevel() + 1)
                 tooltip.TacoTipPortrait3D:EnableMouse(false)
-                tooltip.TacoTipPortrait3D:SetScript("OnUpdate", function(self)
-                    if (tooltip and tooltip.GetAlpha) then
-                        local a = tooltip:GetAlpha()
-                        if (self:GetAlpha() ~= a) then
-                            self:SetAlpha(a)
-                        end
-                    end
-                end)
+                tooltip.TacoTipPortrait3D:SetScript("OnUpdate", onPortraitModelUpdate)
             end
         elseif (tooltip.TacoTipPortrait3D.SetScript and not tooltip.TacoTipPortrait3D:GetScript("OnUpdate")) then
-            tooltip.TacoTipPortrait3D:SetScript("OnUpdate", function(self)
-                if (tooltip and tooltip.GetAlpha) then
-                    local a = tooltip:GetAlpha()
-                    if (self:GetAlpha() ~= a) then
-                        self:SetAlpha(a)
-                    end
-                end
-            end)
+            tooltip.TacoTipPortrait3D:SetScript("OnUpdate", onPortraitModelUpdate)
         end
         if (tooltip.TacoTipPortrait3D) then
             if (tooltip.TacoTipPortrait) then
@@ -721,8 +730,8 @@ function TT:ApplyTooltipAppearance(tooltip, unit)
 
     local portrait = ensureTooltipPortrait(tooltip)
     local portraitScale = TacoTipConfig.tooltip_portrait_scale or 1
-    local portraitW = math.floor(60 * portraitScale)
-    local portraitH = math.floor(80 * portraitScale)
+    local portraitW = math.floor(72 * portraitScale)
+    local portraitH = math.floor(96 * portraitScale)
     if (portrait) then
         if (TacoTipConfig.tooltip_portrait and unit) then
             portrait:ClearAllPoints()
@@ -849,6 +858,8 @@ end
 TT.clearTooltipVisuals = clearTooltipVisuals
 
 local scheduleItemTooltipRefresh
+local pooledTooltipText = {}
+local pooledLinesToAdd = {}
 
 local function onTooltipSetUnit(tooltip)
     local name, tooltipUnit = tooltip:GetUnit()
@@ -885,8 +896,10 @@ local function onTooltipSetUnit(tooltip)
 
     local wide_style = (TacoTipConfig.tip_style == 1 or ((TacoTipConfig.tip_style == 2 or TacoTipConfig.tip_style == 4) and IsShiftKeyDown()))
     local mini_style = (not wide_style and (TacoTipConfig.tip_style == 4 or TacoTipConfig.tip_style == 5))
-    local text = {}
-    local linesToAdd = {}
+    wipe(pooledTooltipText)
+    wipe(pooledLinesToAdd)
+    local text = pooledTooltipText
+    local linesToAdd = pooledLinesToAdd
     local numLines = tooltip:NumLines()
     for i = 1, numLines do
         local leftLine = getTooltipLeftLine(tooltip, i)
@@ -1034,6 +1047,8 @@ local function onTooltipSetUnit(tooltip)
         local diffColor = getHostileDifficultyColor(tooltipUnit)
         if (diffColor) then
             levelStr = colorizeText(levelStr, diffColor.r, diffColor.g, diffColor.b)
+        else
+            levelStr = colorizeText(levelStr, 1, 1, 1)
         end
 
         local displayClass = localizedClass
@@ -1398,16 +1413,14 @@ local function onTooltipSetUnit(tooltip)
             end
 
             TacoTipPowerBar:SetScript("OnEvent", function(self, event, unit)
+                if (not self:IsShown()) then
+                    return
+                end
                 local ttUnit = resolveTooltipUnit(GameTooltip)
                 if (unit and ttUnit and UnitIsUnit(unit, ttUnit)) then
                     self:Update(unit)
                 end
             end)
-            TacoTipPowerBar:RegisterEvent("UNIT_POWER_UPDATE")
-            TacoTipPowerBar:RegisterEvent("UNIT_MAXPOWER")
-            TacoTipPowerBar:RegisterEvent("UNIT_DISPLAYPOWER")
-            TacoTipPowerBar:RegisterEvent("UNIT_POWER_BAR_SHOW")
-            TacoTipPowerBar:RegisterEvent("UNIT_POWER_BAR_HIDE")
         end
         if (UnitPowerMax(tooltipUnit) > 0) then
             if (TacoTipConfig.show_hp_bar) then
@@ -1417,9 +1430,18 @@ local function onTooltipSetUnit(tooltip)
                 TacoTipPowerBar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 2, -1)
                 TacoTipPowerBar:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", -2, -1)
             end
-            TacoTipPowerBar:Update()
+            TacoTipPowerBar:Update(tooltipUnit)
             TacoTipPowerBar:Show()
             startPowerBarTicker()
+            if (TacoTipPowerBar.RegisterUnitEvent) then
+                pcall(TacoTipPowerBar.RegisterUnitEvent, TacoTipPowerBar, "UNIT_POWER_UPDATE", tooltipUnit)
+                pcall(TacoTipPowerBar.RegisterUnitEvent, TacoTipPowerBar, "UNIT_MAXPOWER", tooltipUnit)
+                pcall(TacoTipPowerBar.RegisterUnitEvent, TacoTipPowerBar, "UNIT_DISPLAYPOWER", tooltipUnit)
+            else
+                TacoTipPowerBar:RegisterEvent("UNIT_POWER_UPDATE")
+                TacoTipPowerBar:RegisterEvent("UNIT_MAXPOWER")
+                TacoTipPowerBar:RegisterEvent("UNIT_DISPLAYPOWER")
+            end
             if (tooltip.SetPadding) then
                 tooltip:SetPadding(0, 10, 0, 0)
                 tooltip._tacoTipPaddingSet = true
@@ -1705,16 +1727,6 @@ GameTooltip:HookScript("OnTooltipSetSpell", function(tooltip)
     return safeCall(clearTooltipVisuals, tooltip)
 end)
 
-if (GameTooltip.HookScript) then
-    GameTooltip:HookScript("OnTooltipCleared", function(tooltip)
-        return safeCall(clearTooltipVisuals, tooltip)
-    end)
-end
-
-GameTooltip:HookScript("OnHide", function()
-    cancelDelayedTooltip(GameTooltip)
-    stopPowerBarTicker()
-end)
 
 local function CreateMouseAnchor()
     TacoTipMouseAnchor = CreateFrame("Frame", nil, UIParent)
@@ -2100,11 +2112,13 @@ local function onEvent(self, event, ...)
             end
         end
     elseif (event == "UNIT_TARGET") then
-        local unit = ...
-        if (unit) then
-            local ttUnit = resolveTooltipUnit(GameTooltip)
-            if (UnitExists(unit) and ttUnit and UnitIsUnit(unit, ttUnit)) then
-                GameTooltip:SetUnit(unit)
+        if (GameTooltip and GameTooltip:IsShown() and TacoTipConfig.show_target) then
+            local unit = ...
+            if (unit) then
+                local ttUnit = resolveTooltipUnit(GameTooltip)
+                if (ttUnit and UnitExists(unit) and UnitIsUnit(unit, ttUnit)) then
+                    GameTooltip:SetUnit(unit)
+                end
             end
         end
     elseif (event == "ADDON_LOADED") then

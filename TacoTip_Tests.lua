@@ -281,6 +281,20 @@ local function RegisterTacoTipTests()
             savedUse, savedR, savedG, savedB
     end
 
+    function Borders:MediaResolutionCaching()
+        if (not TT.InvalidateResolvedMediaCache or not TT.GetResolvedTooltipBackground) then
+            return
+        end
+        TT:InvalidateResolvedMediaCache()
+        local bg1 = TT:GetResolvedTooltipBackground()
+        IsTrue(type(bg1) == "string" and bg1 ~= "", "first background resolution returns valid string")
+        local bg2 = TT:GetResolvedTooltipBackground()
+        AreEqual(bg1, bg2, "second resolution returns identical cached value")
+        TT:InvalidateResolvedMediaCache()
+        local bg3 = TT:GetResolvedTooltipBackground()
+        AreEqual(bg1, bg3, "re-resolved value after invalidation matches")
+    end
+
     -- ============================================================
     -- TT-Portrait: 3:4 (taller than wide) sizing, slightly larger
     -- ============================================================
@@ -298,9 +312,9 @@ local function RegisterTacoTipTests()
             -- Use tolerance comparisons: WoW's coordinate system returns
             -- floating-point values that can vary by ~1e-5 from the SetSize
             -- argument (e.g. 42.000026702881 instead of 42.0).
-            IsTrue(math.abs((w or 0) - 60) < 0.01, string.format("portrait width ≈ 60 (got %.8f)", w or -1))
-            IsTrue(math.abs((h or 0) - 80) < 0.01,
-                string.format("portrait height ≈ 80 at scale 1 (3:4, taller) (got %.8f)", h or -1))
+            IsTrue(math.abs((w or 0) - 72) < 0.01, string.format("portrait width ≈ 72 (got %.8f)", w or -1))
+            IsTrue(math.abs((h or 0) - 96) < 0.01,
+                string.format("portrait height ≈ 96 at scale 1 (3:4, taller) (got %.8f)", h or -1))
             IsTrue(h > w, "portrait is taller than wide (3:4)")
         end
         cfg.tooltip_portrait_scale = savedScale
@@ -314,8 +328,8 @@ local function RegisterTacoTipTests()
         local f = GameTooltip.TacoTipPortrait3D or GameTooltip.TacoTipPortrait
         if (f and f.GetWidth and f.GetHeight) then
             local w, h = f:GetWidth(), f:GetHeight()
-            IsTrue(math.abs((w or 0) - 90) < 0.01, string.format("scaled width ≈ 90 (60*1.5) (got %.8f)", w or -1))
-            IsTrue(math.abs((h or 0) - 120) < 0.01, string.format("scaled height ≈ 120 (80*1.5) (got %.8f)", h or -1))
+            IsTrue(math.abs((w or 0) - 108) < 0.01, string.format("scaled width ≈ 108 (72*1.5) (got %.8f)", w or -1))
+            IsTrue(math.abs((h or 0) - 144) < 0.01, string.format("scaled height ≈ 144 (96*1.5) (got %.8f)", h or -1))
         end
         cfg.tooltip_portrait_scale = savedScale
     end

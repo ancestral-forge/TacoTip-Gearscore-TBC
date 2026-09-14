@@ -1,42 +1,42 @@
 [
   {
     "id": "goal-1",
-    "title": "Root Cause Audit of In-Game Dual-Spec Test Findings",
-    "description": "Examine user screenshot and audit main.lua for dual-spec talent rendering: why points inherited class color on inactive spec and why inline alpha does not dim text.",
+    "title": "Deep Audit of Addon Architecture & Blizzard API Sources",
+    "description": "Examine TacoTip codebase against official Blizzard FrameXML sources at /home/sam/wow-ui-source (classic_anniversary, classic_era) to identify performance bottlenecks, memory leaks, redundant C-API roundtrips, and portrait scaling dynamics.",
     "status": "completed",
-    "verification_criteria": "Root causes clearly identified: formatSpecializationText wrapped [%d/%d/%d] inside |c99... class color, and WoW font strings do not support inline alpha.",
-    "evidence": "Verified in CHANGELOG.md [0.7.5] and main.lua line 431 that formatSpecializationText wrapped [%d/%d/%d] inside |c99 class color."
+    "verification_criteria": "Comprehensive audit completed identifying specific hotspots: 3D portrait base dimensions, SharedMedia resolution overhead, PowerBar combat event flood, GameTooltip hook duplicates, and linesToAdd GC allocations.",
+    "evidence": "Audit completed with concrete line references: main.lua 724-725 (portrait size), options.lua 796 (GetTooltipBackgroundChoices called on hover), main.lua 1406 (PowerBar global event leaks), main.lua 1709 (duplicate hooks), gearscore.lua 268 (table wrap)."
   },
   {
     "id": "goal-2",
-    "title": "Update formatSpecializationText in main.lua",
-    "description": "Update formatSpecializationText in main.lua so active spec uses class color and inactive spec uses lowest GearScore quality grey (0.50, 0.50, 0.50 / GRAY_FONT_COLOR); keep talent numbers white for both specs; strictly preserve |c00000000 for alignment; preserve and accurately update comments.",
+    "title": "Increase 3D Portrait Base Dimensions (3:4 Ratio: 72x96)",
+    "description": "Increase 3D portrait base dimensions in main.lua from 60x80 to 72x96 (+20% size increase, strictly preserving 3:4 aspect ratio). Update WoWUnit unit tests in TacoTip_Tests.lua to verify new base and scaled dimensions.",
     "status": "completed",
-    "verification_criteria": "Active spec name is class colored, inactive spec name is lowest GearScore grey, all talent numbers are white outside color code, |c00000000 alignment prefix is preserved, and comments are accurate.",
-    "evidence": "Applied in main.lua with colorizeText(specName, 0.50, 0.50, 0.50) for dim spec, class color for active spec, [p1/p2/p3] formatted outside coloredName, |c00000000%s: |r preserved on lines 1197 and 1225, and comments updated accurately."
+    "verification_criteria": "Portrait base size is 72x96 (3:4 ratio), cleanly scales to integer dimensions at 50/100/150/200% scale, and unit tests in TacoTip_Tests.lua pass.",
+    "evidence": "Applied 72x96 base dimensions in main.lua; updated TacoTip_Tests.lua to verify 72x96 and 108x144; verified luacheck 0 warnings across 21 files."
   },
   {
     "id": "goal-3",
-    "title": "Update TacoTip_Tests.lua Dual-Spec Test",
-    "description": "Update Stats:DualSpecDimRendering in TacoTip_Tests.lua to verify lowest GearScore grey color code (|cff7f7f7f / |cff808080) for inactive spec and class color for active spec, with white numbers for both.",
+    "title": "High-Frequency Performance & Zero-Allocation Tooltip Pipeline",
+    "description": "Implement caching for resolved SharedMedia assets in options.lua (font, background, border, statusbar) invalidated on change/register; implement table pooling for linesToAdd in main.lua to eliminate GC churn on unit hover; optimize item info scoring in gearscore.lua.",
     "status": "completed",
-    "verification_criteria": "Unit tests assert exact color code boundaries for both active and inactive specs without asserting deprecated |c99.",
-    "evidence": "Updated Stats:DualSpecDimRendering in TacoTip_Tests.lua asserting grey color code on dimText, |r before [ on both active and inactive specs, activeText carrying class color without grey, and balanced color codes."
+    "verification_criteria": "Mouseover tooltips perform zero table allocations for linesToAdd, zero SharedMedia table sorts on hover, and zero redundant GetItemInfo calls.",
+    "evidence": "Cached resolved media in options.lua with TT:InvalidateResolvedMediaCache; pooled linesToAdd and tooltip text in main.lua; zero-allocation scoreFromItemValues in gearscore.lua; verified luacheck 0 warnings across 21 files."
   },
   {
     "id": "goal-4",
-    "title": "Verify Static Analysis Gates",
-    "description": "Run luacheck across the entire workspace to ensure 0 warnings and 0 errors, and verify syntax validity.",
+    "title": "Event Handling & Lifecycle Hardening",
+    "description": "Harden TacoTipPowerBar event lifecycle to prevent event processing when hidden, deduplicate GameTooltip lifecycle hooks in main.lua, gate UNIT_TARGET event processing when tooltip is hidden, and throttle 3D portrait OnUpdate alpha sync.",
     "status": "completed",
-    "verification_criteria": "luacheck . reports 0 warnings / 0 errors across all 21 files.",
-    "evidence": "Executed luacheck . reporting 0 warnings / 0 errors in 21 files, and luac -p main.lua TacoTip_Tests.lua passing with exit code 0."
+    "verification_criteria": "PowerBar registers/unregisters events cleanly with no execution when hidden, duplicate OnTooltipCleared/OnHide hooks eliminated, and 3D portrait runs a static 20Hz throttled handler.",
+    "evidence": "PowerBar event handler gated on IsShown with unregistration on ticker stop; removed redundant GameTooltip OnTooltipCleared/OnHide hooks; throttled 3D portrait OnUpdate to 20Hz; gated UNIT_TARGET on GameTooltip:IsShown() and show_target; verified luacheck 0 warnings across 21 files."
   },
   {
     "id": "goal-5",
-    "title": "Synchronize Project Memory & Documentation",
-    "description": "Update MEMORY.md, .omg/memory/dual_spec_inspect.md, memory-bank/, and CHANGELOG.md with the lowest GearScore grey styling rules.",
+    "title": "Static Analysis, Regression Suite & Documentation Synchronization",
+    "description": "Execute luacheck . across all 21 files ensuring zero warnings and zero errors. Synchronize all memory files, rule packs, techContext, activeContext, README.md, and CHANGELOG.md with 72x96 portrait size and architectural enhancements.",
     "status": "completed",
-    "verification_criteria": "All memory documents and changelogs accurately reflect lowest GearScore grey styling.",
-    "evidence": "Updated CHANGELOG.md [0.7.5], .omg/memory/dual_spec_inspect.md, and memory-bank/activeContext.md."
+    "verification_criteria": "luacheck . passes with 0 warnings / 0 errors in 21 files, tests pass, and all documentation reflects exact updated code parameters.",
+    "evidence": "luacheck . passed with 0 warnings and 0 errors across all 21 files; luac -p passed; TacoTip_Tests.lua updated; synchronized version 0.7.6, 72x96 portrait size, zero-alloc buffer pooling, and media resolution caching across TacoTip.toc, main.lua, options.lua, README.md, CHANGELOG.md, AGENTS.md, MEMORY.md, and memory-bank."
   }
 ]

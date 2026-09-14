@@ -1,6 +1,6 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.5"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.6"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or
     (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
@@ -137,6 +137,9 @@ function TT:ApplyConfigDefaults(config)
         end
     end
     self:SafeSanitizeConfig(config)
+    if (self.InvalidateResolvedMediaCache) then
+        self:InvalidateResolvedMediaCache()
+    end
 end
 
 -- Validates and repairs common saved-variable corruption patterns that can
@@ -782,24 +785,52 @@ local function resolveConfiguredMediaValue(choices, configuredValue, fallbackVal
     return fallbackValue
 end
 
+local cachedResolvedFont = nil
+local cachedResolvedBar = nil
+local cachedResolvedBackground = nil
+local cachedResolvedBorder = nil
+
+function TT:InvalidateResolvedMediaCache()
+    cachedResolvedFont = nil
+    cachedResolvedBar = nil
+    cachedResolvedBackground = nil
+    cachedResolvedBorder = nil
+end
+
 function TT:GetResolvedTooltipFont()
-    return resolveConfiguredMediaValue(self:GetTooltipFontChoices(), TacoTipConfig and TacoTipConfig.tooltip_font,
-        "Fonts\\FRIZQT__.TTF")
+    if (not cachedResolvedFont) then
+        cachedResolvedFont = resolveConfiguredMediaValue(self:GetTooltipFontChoices(),
+            TacoTipConfig and TacoTipConfig.tooltip_font,
+            "Fonts\\FRIZQT__.TTF")
+    end
+    return cachedResolvedFont
 end
 
 function TT:GetResolvedTooltipStatusBarTexture()
-    return resolveConfiguredMediaValue(self:GetTooltipStatusBarTextureChoices(),
-        TacoTipConfig and TacoTipConfig.tooltip_bar_texture, "Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
+    if (not cachedResolvedBar) then
+        cachedResolvedBar = resolveConfiguredMediaValue(self:GetTooltipStatusBarTextureChoices(),
+            TacoTipConfig and TacoTipConfig.tooltip_bar_texture,
+            "Interface\\TargetingFrame\\UI-TargetingFrame-BarFill")
+    end
+    return cachedResolvedBar
 end
 
 function TT:GetResolvedTooltipBackground()
-    return resolveConfiguredMediaValue(self:GetTooltipBackgroundChoices(),
-        TacoTipConfig and TacoTipConfig.tooltip_background_texture, "Interface\\Tooltips\\UI-Tooltip-Background")
+    if (not cachedResolvedBackground) then
+        cachedResolvedBackground = resolveConfiguredMediaValue(self:GetTooltipBackgroundChoices(),
+            TacoTipConfig and TacoTipConfig.tooltip_background_texture,
+            "Interface\\Tooltips\\UI-Tooltip-Background")
+    end
+    return cachedResolvedBackground
 end
 
 function TT:GetResolvedTooltipBorder()
-    return resolveConfiguredMediaValue(self:GetTooltipBorderChoices(),
-        TacoTipConfig and TacoTipConfig.tooltip_border_texture, "Interface\\Tooltips\\UI-Tooltip-Border")
+    if (not cachedResolvedBorder) then
+        cachedResolvedBorder = resolveConfiguredMediaValue(self:GetTooltipBorderChoices(),
+            TacoTipConfig and TacoTipConfig.tooltip_border_texture,
+            "Interface\\Tooltips\\UI-Tooltip-Border")
+    end
+    return cachedResolvedBorder
 end
 
 local function setFontState(fontString, enabled, enabledFont)
@@ -2522,6 +2553,9 @@ local function buildCharacterInspectPage()
 end
 
 modernGetConfig = function()
+    if (TT.InvalidateResolvedMediaCache) then
+        TT:InvalidateResolvedMediaCache()
+    end
     if (modernOptionsState.pages.rootBuilt and optionsFrame.Refresh) then
         optionsFrame:Refresh()
     end

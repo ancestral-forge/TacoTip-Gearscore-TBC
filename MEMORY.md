@@ -1,6 +1,6 @@
 # TacoTip-Gearscore-TBC — Enterprise Project Memory
 
-> **Version:** `0.7.5` | **CurseForge ID:** `1555962` | **Supported Interfaces:** `11509` (Classic Era / SoD), `20506` (TBC Anniversary), `38001` (Titanforge)  
+> **Version:** `0.7.6` | **CurseForge ID:** `1555962` | **Supported Interfaces:** `11509` (Classic Era / SoD), `20506` (TBC Anniversary), `38001` (Titanforge)  
 > **Repository:** `ssdeanx/TacoTip-Gearscore-TBC` | **Maintainer:** Pilsung (AcidBomb) | **Architecture:** Multi-Client Classic Dual-Engine
 
 ---
@@ -18,8 +18,8 @@ TacoTip Gearscore TBC is an enterprise-grade World of Warcraft Classic addon pro
 | **Architecture & Load Order** | [architecture.md](file:///.omg/memory/architecture.md) | Dual-engine runtime order (`gearscore` → `pawn` → `textures` → `options` → `main`), shared globals (`TT`, `TT_GS`, `TT_PAWN`, `TacoTipConfig`), clean namespacing. |
 | **Blizzard API Compatibility** | [blizzard_api_compat.md](file:///.omg/memory/blizzard_api_compat.md) | FrameXML branch auditing against `/home/sam/wow-ui-source` (`origin/classic_anniversary` & `origin/classic_era`), `C_SpecializationInfo` fallbacks, client ID gates. |
 | **Dual Spec & Inspection** | [dual_spec_inspect.md](file:///.omg/memory/dual_spec_inspect.md) | `LibClassicInspector` runtime integration, TBC Anniversary / SoD dual-spec resolution, dynamic spec update events, zero-alpha tooltip alignment. |
-| **Tooltip Lifecycle & Visuals** | [tooltip_lifecycle.md](file:///.omg/memory/tooltip_lifecycle.md) | `clearTooltipVisuals` non-unit isolation, 3D portrait `OnUpdate` alpha sync, `ClearModel` GPU purging, deferred timer generation counters (`_borderDeferralGen`). |
-| **Options UI & Configuration** | [options_ui_system.md](file:///.omg/memory/options_ui_system.md) | Dual modern Canvas (`Settings.RegisterCanvasLayoutCategory`) + legacy `InterfaceOptions` fallback, SavedVariables migration, modal media picker. |
+| **Tooltip Lifecycle & Visuals** | [tooltip_lifecycle.md](file:///.omg/memory/tooltip_lifecycle.md) | `clearTooltipVisuals` non-unit isolation, 3D portrait `OnUpdate` alpha sync (20Hz), `ClearModel` GPU purging, deferred timer generation counters (`_borderDeferralGen`). |
+| **Options UI & Configuration** | [options_ui_system.md](file:///.omg/memory/options_ui_system.md) | Dual modern Canvas (`Settings.RegisterCanvasLayoutCategory`) + legacy `InterfaceOptions` fallback, SavedVariables migration, modal media picker, media resolution caching. |
 | **Localization Engine** | [localization_system.md](file:///.omg/memory/localization_system.md) | 100% parity across all 11 locales (261/261 keys), format specifier safety, runtime locale override. |
 | **Quality & Verification Gates** | [verification_gates.md](file:///.omg/memory/verification_gates.md) | Strict zero-warning static analysis gate (`luacheck .`), WoWUnit automated test suite (`TacoTip_Tests.lua`), multi-client runner mocks. |
 
@@ -44,5 +44,9 @@ TacoTip Gearscore TBC is an enterprise-grade World of Warcraft Classic addon pro
   - `20506`: TBC Classic Anniversary 2.5.6
   - `38001`: Titanforge Chinese Wrath Client
 - **Default Visual Dimensions:**
-  - 3D Portrait: `60 × 80` (3:4 ratio)
+  - 3D Portrait: `72 × 96` (3:4 ratio, clean integer scaling at all stops: 36x48, 72x96, 108x144, 144x192)
   - Tooltip Border Edge Size: `14px` default (`Tooltip enlarged` texture)
+- **High-Frequency Performance Buffers:**
+  - Zero-allocation pooled tables: `pooledLinesToAdd`, `pooledTooltipText` in `main.lua`
+  - Lazy SharedMedia resolution cache with `TT:InvalidateResolvedMediaCache()` in `options.lua`
+  - Throttled 3D portrait model sync: 20Hz (0.05s) using `self:GetParent():GetAlpha()`

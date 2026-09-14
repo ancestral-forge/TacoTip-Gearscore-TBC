@@ -59,10 +59,13 @@
 - **Tooltip Text & Color Formatting:** Un-colored text at the start of lines passed to `GameTooltip:AddLine()` defaults to Blizzard's gold font color (`HIGHLIGHT_FONT_COLOR` / `1, 0.82, 0`). Always wrap static label prefixes in explicit inline color codes (e.g. `|cFFFFFFFFLevel|r`).
 - **Level Number Color Rules:** Friendly player level numbers MUST render in clean white (`|cFFFFFFFF<Level>|r`). Difficulty color (`getHostileDifficultyColor`) is strictly reserved for hostile/attackable units (`UnitCanAttack("player", unit)`).
 - **Non-Unit Visual Isolation:** `clearTooltipVisuals` must be nil-safe (`tooltip.GetName and tooltip:GetName()`) and immediately hide all unit-specific overlays (portraits, 3D models, elite frames, power bars) and reset borders on every tooltip show/clear transition so non-unit tooltips (items, spells, bags, map POIs) never inherit stale unit state.
+- **Zero-Allocation Tooltip Pipeline:** Unit tooltip lines and text formatting MUST use static pooled buffers (`pooledLinesToAdd`, `pooledTooltipText`) to eliminate garbage collection pressure on high-frequency mouseovers.
+- **SharedMedia Resolution Caching:** `TT:GetResolvedTooltip*` MUST use cached media lookups via `TT:InvalidateResolvedMediaCache()` rather than rebuilding choices and sorting on every hover.
+- **Event Lifecycle Gating:** `TacoTipPowerBar` and `UNIT_TARGET` handlers must return immediately when the relevant tooltip or bar is not shown to avoid combat event lag.
 
 ## Commands & Workflow
 
-- **Version Bumping:** Update `.toc` files (`TacoTip.toc`), `main.lua` `addOnVersion`, `options.lua`, `README.md`, `CHANGELOG.md`, `MEMORY.md`, and `AGENTS.md` simultaneously. Current version: `0.7.5`.
+- **Version Bumping:** Update `.toc` files (`TacoTip.toc`), `main.lua` `addOnVersion`, `options.lua`, `README.md`, `CHANGELOG.md`, `MEMORY.md`, and `AGENTS.md` simultaneously. Current version: `0.7.6`.
 - **Testing:** Add test cases into `TacoTip_Tests.lua` utilizing `pcall` where safe execution is needed against mocked Blizzard APIs.
 - **Memory & Documentation Integrity:**
   - Whenever features, UI dimensions, API signatures, defaults, or architectural rules change, you MUST synchronously update:
@@ -71,7 +74,7 @@
     3. Relevant rule packs under `.omg/rules/*.md`
     4. `memory-bank/*.md` (`activeContext.md`, `progress.md`, `systemPatterns.md`)
     5. `README.md` and `CHANGELOG.md`
-  - Verify that all documentation accurately reflects real code parameters (e.g. 3D portrait dimensions `60x80`, default border edge size `14px`, 261 locale keys, interface IDs `11509`, `20506`, `38001`).
+  - Verify that all documentation accurately reflects real code parameters (e.g. 3D portrait dimensions `72x96`, default border edge size `14px`, 261 locale keys, interface IDs `11509`, `20506`, `38001`).
 
 ## API Research & Verification
 

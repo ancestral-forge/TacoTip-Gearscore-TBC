@@ -23,7 +23,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.5` |
+| Public version | `v0.7.6` |
 
 ## Why TacoTip Gearscore TBC exists
 
@@ -48,7 +48,7 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 
 | Feature Highlight | Details |
 | --- | --- |
-| **Enlarged 3D Character Portrait** | Live 3D character portrait enlarged to **60×80** (width 60px, height 80px), maintaining an exact 3:4 aspect ratio to span full multi-line tooltips. |
+| **Enlarged 3D Character Portrait** | Live 3D character portrait enlarged to **72×96** (width 72px, height 96px), maintaining an exact 3:4 aspect ratio with crisp integer pixel dimensions across all scale stops (50%–200%). |
 | **`<Guild> Rank` Default Style** | Guild rank display enabled by default (`show_guild_rank = true`) with `<GuildName> RankName` formatting (`guild_rank_alt_style = true`). |
 | **Custom Dropdown Media Picker** | Scrollable modal popup UI (`TacoTipMediaPickerFrame`) with statusbar texture strip previews, real 9-slice sliced borders, scrollbar, and ESC/click-outside auto-dismiss. |
 | **Shaman Blue Default Color** | Shamans render in Shaman Blue (`#0070DE`) on Classic Era / SoD by default, with an options checkbox to switch to Classic pink if preferred. |
@@ -58,7 +58,20 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.7.5 (Latest Update)
+## What's new in v0.7.6 (Latest Update)
+
+| Fix / Change | Description |
+| --- | --- |
+| **Enlarged 3D Character Portrait** | Base dimensions increased to **72×96** (+20% size increase, strictly maintaining exact 3:4 aspect ratio). Scales cleanly without sub-pixel blurring at 50% (36×48), 100% (72×96), 150% (108×144), and 200% (144×192). |
+| **Zero-Allocation Hover Pipeline** | Mouseover unit tooltips now use static pooled buffer tables (`pooledLinesToAdd`, `pooledTooltipText`) and zero-allocation item value calculations, eliminating table creation garbage-collection spikes during high-frequency mouseovers. |
+| **SharedMedia Resolution Caching** | Media resolution results (backgrounds, borders, statusbars, fonts) are now lazily cached and invalidated only on configuration updates or new media registration, replacing heavy per-hover $O(N \log N)$ table sorts with instant $O(1)$ lookups. |
+| **PowerBar Event Hardening** | `TacoTipPowerBar` event handling is strictly gated to when the power bar is shown, and unit events are cleanly unregistered when the ticker stops, eliminating event churn during raid combat. |
+| **Tooltip Hook Deduplication** | Removed duplicate lifecycle hooks on `GameTooltip` for `OnTooltipCleared` and `OnHide` already handled by `registerTooltipVisualClearing`. |
+| **`UNIT_TARGET` Gate** | Target change events return immediately in 1ns when `GameTooltip` is hidden or target line display is disabled. |
+| **Portrait 20Hz Throttling** | 3D portrait `OnUpdate` alpha synchronization is throttled to 20Hz (0.05s) using parent alpha caching instead of querying the model every single engine frame. |
+| **Pure White Friendly Levels** | Friendly player level numbers render in clean white text (`\|cFFFFFFFF`) to maintain distinct contrast with hostile difficulty colors. |
+
+## What's new in v0.7.5 (Recent v0.7.x Update)
 
 | Fix / Change | Description |
 | --- | --- |

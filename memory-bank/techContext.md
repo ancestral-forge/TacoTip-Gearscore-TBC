@@ -3,8 +3,8 @@
 ## Runtime
 
 - Lua addon for World of Warcraft Classic-family clients only.
-- Supported interface versions: `11508`, `20505`, `30405`, `38001`.
-- `30405` (Wrath Classic) is carried forward on trust from prior releases; its API surface is **unverified** (no WotLK FrameXML branch exists in the local `wow-ui-source` reference to diff against).
+- Supported interface versions: `11509`, `20506`, `38001` (`30405` deprecated).
+- 3D portrait base dimensions: `72 × 96` (3:4 aspect ratio).
 - Saved variable: `TacoTipConfig`.
 
 ## Bundled libraries and manifests

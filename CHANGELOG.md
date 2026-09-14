@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.6` | `2026-09-13` | Enterprise audit & performance pass: 3D portrait enlarged to `72x96` (strictly preserving 3:4 aspect ratio with integer dimensions at 50/100/150/200% scale). Zero-allocation hover pipeline (pooled buffer tables in `main.lua` and zero-alloc `scoreFromItemValues` in `gearscore.lua`). SharedMedia resolution caching (`TT:InvalidateResolvedMediaCache`) eliminating $O(N \log N)$ table sorts on hover. PowerBar event lifecycle hardened against combat event floods. Deduplicated redundant `GameTooltip` `OnTooltipCleared` and `OnHide` hooks. Gated `UNIT_TARGET` event processing. Throttled 3D portrait `OnUpdate` alpha sync to 20Hz. Pure white friendly player levels. New unit tests in `TacoTip_Tests.lua`. |
 | `0.7.5` | `2026-09-11` | Dual-spec active/inactive rendering fixed: the inactive spec name renders in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR`), the active spec name renders in its class color, and talent point numbers `[x/x/x]` render in clean white for both specs. New `Stats:DualSpecDimRendering` regression test. Performance: `MODIFIER_STATE_CHANGED` re-render gated to shown tooltips on shift-sensitive styles (2/4), mouse-anchor `OnUpdate` no-ops while mouse anchoring is disabled, item tooltip hook skips `IsEquippableItem`/`GetItemInfo` when both item features are off, Pawn scale name built once per scoring pass. Options: non-Wrath clients no longer force-write `show_achievement_points = false` into saved config (render path stays WotLK-gated). |
 | `0.7.4` | `2026-09-10` | Per-tooltip lifecycle state: every timer, generation counter, item-load handle and the power-bar cleanup are now owned per tooltip frame, so clear/hide of one tooltip can no longer cancel another's pending work. Cancellable item-data refresh on uncached equippable items via C_Item continuation (generation + link guarded, with a `C_Item.RequestLoadItemDataByID` fallback and delayed-tooltip timer hardening). Duplicate equipped-item id dedupe at every Gearscore/Pawn callback registration site. `getOrCreateItemMixin` hoisted to module scope in LibClassicInspector (no per-slot closure allocation on the inspect hot path). Three new WoWUnit regression tests. Zero luacheck warnings. |
 | `0.7.3` | `2026-08-27` | Performance & hardening pass from prism-full audit: single `GetItemInfo` fetch per item tooltip (new `TT_GS:GetItemScoreFromInfo`, HunterScore reuses the fetch), memoized `ItemMixin` allocation in `LibClassicInspector:GetInventoryItemMixin` keyed by item identity, overlay offset clamping (edit-box writer plus `SafeSanitizeConfig` bounds incl. NaN/infinity repair), removed order-dependent options-page `OnShow` overwrites of safeCall wrappers, library hardening (`GetTalentInfoByClass`/`GetTalentInfo` nil-talent guard on both player and inspected branches, nil-safe event dispatcher, achievement validity probes moved to the documented 14th `isStatistic` return), stale "pre-2.5.3" backdrop comments corrected to runtime NineSlice detection, two new regression tests. |
@@ -32,6 +33,42 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.6] - 2026-09-13
+
+### Visual & Layout - 0.7.6
+
+- **3D Character Portrait Resizing (3:4 Aspect Ratio):**
+  - Increased base 3D portrait dimensions in `main.lua` from `60x80` to `72x96` (+20% size increase).
+  - Maintained an exact 3:4 aspect ratio (`72 / 96 = 0.75`), providing clean, non-fractional integer pixel scaling across all slider steps: 50% (`36x48`), 100% (`72x96`), 150% (`108x144`), and 200% (`144x192`).
+  - Added unit test coverage in `TacoTip_Tests.lua` (`Portrait:DefaultSizeIs34Ratio` and `Portrait:ScaledSizeKeepsRatio`).
+- **Friendly Player Level Color:**
+  - Friendly player level numbers render in clean white text (`|cFFFFFFFF<Level>|r`), cleanly differentiating friendly units from hostile difficulty-colored units.
+
+### Performance & Memory Optimization - 0.7.6
+
+- **Zero-Allocation Hover Pipeline:**
+  - Mouseover unit tooltips now use static pooled buffer tables (`pooledLinesToAdd` and `pooledTooltipText`) in `main.lua`, completely eliminating transient table creation and garbage-collection churn during rapid mouseovers.
+  - Refactored item score calculations in `gearscore.lua` (`scoreFromItemValues`) to consume scalar returns directly instead of wrapping `GetItemInfo(...)` in intermediate tables.
+- **SharedMedia Resolution Caching:**
+  - Implemented a lazy caching layer in `options.lua` for resolved media paths (backgrounds, borders, statusbars, fonts).
+  - Heavy $O(N \log N)$ sorting and formatting of dropdown choices are now avoided on every unit mouseover, reducing media resolution to instant $O(1)$ table reads.
+  - Caches are automatically invalidated via `TT:InvalidateResolvedMediaCache()` on config updates (`ApplyConfigDefaults`, `modernGetConfig`) and when new media is dynamically registered by `LibSharedMedia-3.0`.
+  - Added regression test `Borders:MediaResolutionCaching` in `TacoTip_Tests.lua`.
+- **PowerBar Combat Event Hardening:**
+  - Gated `TacoTipPowerBar:OnEvent` with `if not self:IsShown() then return end`, preventing combat power updates from triggering unit resolution while the power bar is hidden.
+  - Power bar event listeners are dynamically unregistered when the update ticker stops.
+- **Tooltip Lifecycle Hook Deduplication:**
+  - Removed duplicate `GameTooltip` `OnTooltipCleared` and `OnHide` hooks in `main.lua` that were already managed cleanly by `registerTooltipVisualClearing`.
+- **Target Event Gating:**
+  - `UNIT_TARGET` event processing in `main.lua` now verifies `GameTooltip and GameTooltip:IsShown() and TacoTipConfig.show_target` before resolving unit references or evaluating unit equivalence.
+- **3D Portrait 20Hz Throttling:**
+  - Throttled 3D portrait model `OnUpdate` alpha synchronization to 20Hz (0.05s) using parent alpha caching (`self:GetParent():GetAlpha()`).
+
+### Testing & Verification - 0.7.6
+
+- Passed `luacheck .` with 0 warnings and 0 errors across all 21 files.
+- Verified syntax with `luac -p` across `main.lua`, `options.lua`, `gearscore.lua`, and `TacoTip_Tests.lua`.
 
 ## [0.7.5] - 2026-09-11
 
