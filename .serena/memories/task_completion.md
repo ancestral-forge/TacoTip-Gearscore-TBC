@@ -1,21 +1,11 @@
-# Task Completion & Verification Gates
+# Task Completion Gates
 
-Before claiming any task, refactoring, or feature is complete, the following gates must be verified:
-
-1. **Static Analysis Gate:**
-   - Execute `luacheck .` from repository root.
-   - Result must be exactly: `0 warnings / 0 errors in 21 files`.
-   - Ensure no temporary `-- luacheck: ignore` comments were introduced.
-
-2. **Automated Unit Testing & Mock Discipline:**
-   - If test cases in `TacoTip_Tests.lua` are added or touched, verify that all global monkey-patches/replaces are executed within `pcall` blocks and cleaned up via `ClearReplaces()`.
-
-3. **Documentation & Memory Synchronization:**
-   - When modifying architectural rules, config defaults, dimensions (e.g. 3D portrait `72x96`), or adding settings:
-     - Update `MEMORY.md`.
-     - Update relevant files in `.omg/memory/` and `.omg/rules/`.
-     - Update `memory-bank/` (`activeContext.md`, `progress.md`, `systemPatterns.md`).
-     - Update `README.md` and `CHANGELOG.md` if user-facing.
-
-4. **Localization Coverage:**
-   - If new text strings were added to `Locale/enUS.lua`, ensure all 10 non-English locale files define or safely inherit the keys with matching format tokens.
+- Preserve existing staged/unstaged work; inspect current git status before changes. No unsolicited commits, pushes, destructive cleanup, or branch switching.
+- Syntax from project root: `for f in main.lua options.lua gearscore.lua pawn.lua textures.lua TacoTip_Tests.lua Locale/*.lua; do luac5.1 -p "$f" || exit 1; done`. Confirm Lua 5.1 compiler availability first; also parse any changed Lua files outside that list.
+- Lint: `luacheck .` with zero warnings/errors.
+- Runtime: execute `/tttest` with WoWUnit on the relevant supported client. Standalone syntax/lint does not prove in-game behavior; explicitly report when client testing is unavailable.
+- New features require meaningful TacoTip_Tests.lua cases; reproduce regressions before fixing them where feasible.
+- Behavior, defaults, UI dimensions, API, and architecture changes require synchronous README.md, CHANGELOG.md, MEMORY.md, relevant .omg/memory and .omg/rules files, and memory-bank activeContext/progress/systemPatterns updates.
+- Version bumps synchronize TacoTip.toc, main.lua and options.lua version values, README.md, CHANGELOG.md, MEMORY.md, and AGENTS.md. Preserve released changelog entries.
+- Inspect final diff for scope, preserved user edits, and documentation accuracy. Report commands actually executed and real exit/test results; do not claim unavailable runtime verification.
+- Serena onboarding/reference maintenance: `serena memories check` from project root checks memory links; do not imply it ran without tool output.

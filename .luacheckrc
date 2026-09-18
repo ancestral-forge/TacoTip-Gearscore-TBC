@@ -191,7 +191,6 @@ globals = {
     "SLASH_TACOTIP6",
     "SLASH_TACOTIP7",
     "TacoTipConfig",
-    "TacoTipGSHistory",
     "_TacoTipPawnReady",
     "TacoTipDragButton",
     "TacoTipMouseAnchor",
@@ -199,6 +198,7 @@ globals = {
     "TacoTip_CustomPosEnable",
     "TacoTip_GSCallback",
     "TACOTIP_LOCALE",
+    "TACOTIP_LOCALES",
     "TT_GS",
     "TT_PAWN",
 }
@@ -209,6 +209,7 @@ files["Locale/*.lua"] = {
     },
     globals = {
         "TACOTIP_LOCALE",
+        "TACOTIP_LOCALES",
     },
 }
 

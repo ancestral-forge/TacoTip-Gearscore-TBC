@@ -8,8 +8,8 @@
 
 --]]
 
-if (((TacoTipConfig and TacoTipConfig.locale_override) or GetLocale()) ~= "deDE") then return end
-_G.TACOTIP_LOCALE = {
+_G.TACOTIP_LOCALES = _G.TACOTIP_LOCALES or {}
+local L = {
     ["Player"] = "Spieler",
     ["Pet"] = "Tier",
     ["Target"] = "Ziel",
@@ -317,3 +317,5 @@ _G.TACOTIP_LOCALE = {
     ["RANK_TITLE"] = "Champion",
     ["REALM"] = "Realm",
 }
+
+_G.TACOTIP_LOCALES["deDE"] = L

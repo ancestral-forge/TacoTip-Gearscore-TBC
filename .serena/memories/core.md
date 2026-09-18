@@ -1,26 +1,15 @@
-# TacoTip-Gearscore-TBC — Core
+# Core Map
 
-Dual-engine World of Warcraft Classic addon providing tooltip enhancements, GearScore calculation, talent and specialization inspection (including dual-spec), Pawn integration, class-colored backdrops/borders, and 3D character portraits.
+- WoW Classic-family tooltip/GearScore/iLvl addon; retail unsupported. Supported interface IDs are declared in TacoTip.toc (11509, 20506, 38001); do not infer support solely from broad runtime build guards.
+- Runtime load order: bundled libraries -> locales (enUS last) -> gearscore.lua -> pawn.lua -> textures.lua -> options.lua -> main.lua -> TacoTip_Tests.lua.
+- Shared state: TT core namespace, TT_GS scoring, TT_PAWN integration, TacoTipConfig SavedVariables, TACOTIP_LOCALE localization.
+- gearscore.lua: scoring and bootstrap; pawn.lua: Pawn bridge; textures.lua: media choices; options.lua: defaults/config sanitization/settings pages; main.lua: live tooltips, event lifecycle, mover, character/inspect overlays; TacoTip_Tests.lua: WoWUnit tests.
+- Options support modern Settings canvas registration and legacy InterfaceOptions fallback. Root/general plus Tooltips, Positioning, Character & Inspect; no Advanced page.
+- Language override uses TacoTipConfig.locale_override on reload; enUS is the fallback/source of truth.
 
-## Load Order & Source Map (TOC Order)
-1. Libs: `Libs/LibStub/`, `Libs/CallbackHandler-1.0/`, `Libs/LibClassicInspector/` (talents/dual-spec), `Libs/LibDetours-1.0/`
-2. Localization: `Locale/enUS.lua` (source of truth) and 10 regional translations (`deDE`, `esES`, `esMX`, `frFR`, `itIT`, `koKR`, `ptBR`, `ruRU`, `zhCN`, `zhTW`)
-3. `gearscore.lua`: GearScore calculation engine and inspect history cache (`TT_GS`, `TacoTipGSHistory`)
-4. `pawn.lua`: Pawn scale score calculation bridge (`TT_PAWN`)
-5. `textures.lua`: Built-in textures and SharedMedia registration
-6. `options.lua`: Settings UI (modern Settings Canvas + legacy InterfaceOptions fallback, media selectors, live preview)
-7. `main.lua`: Core addon initialization (`TT`), hooks, GameTooltip styling, 3D portraits, mover frames, unit events
-8. `TacoTip_Tests.lua`: In-game WoWUnit test suite (`/tttest`)
-
-## Shared Globals & Invariants
-- `_G.TT` (`_G["TacoTip"]`): Core addon table. Do not introduce new globals; namespace helper functions under `TT`.
-- `_G.TT_GS`: GearScore logic and item score calculations.
-- `_G.TT_PAWN`: Pawn calculation bridge.
-- `_G.TacoTipConfig`: SavedVariables table storing user configurations.
-- `_G.TACOTIP_LOCALE`: Active localization table.
-
-## Related Memories
-- For runtime environment, supported interface IDs, and library dependencies, read `mem:tech_stack`.
-- For code style, zero-allocation buffers, API discipline, and non-unit isolation rules, read `mem:conventions`.
-- For essential terminal commands, FrameXML research paths, and in-game slash commands, read `mem:suggested_commands`.
-- For mandatory verification gates and checklists before completing any task, read `mem:task_completion`.
+## Navigation
+- Runtime/tooling constraints: `mem:tech_stack`.
+- Tooltip performance, isolation, and localization invariants: `mem:conventions`.
+- Lint, in-game testing, and non-mutating API-reference commands: `mem:suggested_commands`.
+- Verification and synchronized documentation gates: `mem:task_completion`.
+- Specialized audit notes, to revalidate against current source before acting: `mem:audit/locale_override_lifecycle`, `mem:audit/nineslice_background_rendering`, `mem:audit/tooltip_geometry_and_padding`, `mem:audit/zero_allocation_hotpaths`.

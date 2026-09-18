@@ -1,25 +1,9 @@
-# Tech Stack & Environment
+# Tech Stack
 
-## Languages & Dialects
-- **Lua 5.1**: Target runtime dialect for World of Warcraft Classic FrameXML.
-
-## Supported WoW Client Interfaces
-- `11509`: WoW Classic Era 1.15.x / Season of Discovery
-- `20506`: WoW TBC Classic Anniversary 2.5.6
-- `38001`: Titanforge Chinese Wrath client
-- Note: `30405` is deprecated. Retail (`WOW_PROJECT_MAINLINE`) features must be isolated behind project ID checks or omitted.
-
-## Bundled & Optional Libraries
-- `LibStub`: Library version registration.
-- `CallbackHandler-1.0`: Event/callback dispatcher.
-- `LibClassicInspector`: Talent scanning and dual-spec query resolution across Classic Era, SoD, and TBC Anniversary.
-- `LibDetours-1.0`: Function hook detour engine.
-- `LibSharedMedia-3.0`: Optional runtime media integration (statusbar textures, fonts, borders, backgrounds).
-
-## Static Analysis & Testing
-- `luacheck`: Static analyzer enforcing strict zero-warning policy (`.luacheckrc`, `std = "lua51"`).
-- `WoWUnit`: In-game test suite framework (`TacoTip_Tests.lua`).
-
-## Blizzard API Reference
-- Local FrameXML repository: `/home/sam/wow-ui-source`
-- Active branches: `origin/classic_era` (Era/SoD) and `origin/classic_anniversary` (TBC Anniversary).
+- Lua 5.1 / WoW FrameScript. .luacheckrc explicitly selects lua51; max_line_length=500, unused_args=false, declared WoW globals and per-file overrides.
+- Lua source runs inside WoW; standalone Lua parsing is not runtime/UI verification.
+- Bundled libraries loaded via TacoTip.toc: LibStub, CallbackHandler-1.0, LibDetours-1.0, LibClassicInspector.
+- Optional integrations declared by the TOC include LibClassicGearScore, Pawn, LibSharedMedia-3.0, SharedMedia, WoWUnit.
+- WoWUnit suite: TacoTip_Tests.lua, loaded last by TOC.
+- Official API reference checkout: /home/sam/wow-ui-source; origin/classic_era for Era/SoD, origin/classic_anniversary for TBC Anniversary. Inspect branch contents without switching the working tree.
+- Use Lua 5.1-compatible tooling; confirm installed executable versions before running checks rather than relying on system lua defaults.

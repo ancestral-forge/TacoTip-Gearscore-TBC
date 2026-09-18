@@ -1,16 +1,11 @@
 # Suggested Commands
 
-## Code Quality & Verification
-- `luacheck .`: Run static analysis across the entire project. Must pass with 0 warnings and 0 errors.
+- Syntax gate from project root: `for f in main.lua options.lua gearscore.lua pawn.lua textures.lua TacoTip_Tests.lua Locale/*.lua; do luac5.1 -p "$f" || exit 1; done` (requires installed Lua 5.1 compiler).
+- Static analysis: `luacheck .`; target zero warnings/errors with project .luacheckrc.
+- In-game options: `/tt` or `/tacotip`.
+- In-game WoWUnit tests: `/tttest` or `/tacotest`.
+- API signature research without branch switching: `git -C /home/sam/wow-ui-source grep -n '<API_NAME>' origin/classic_era --` or substitute origin/classic_anniversary.
+- Inspect reference source: `git -C /home/sam/wow-ui-source show origin/classic_anniversary:<path>`.
+- Serena memory link check from project root: `serena memories check`.
 
-## FrameXML API Auditing (`/home/sam/wow-ui-source`)
-- `git -C /home/sam/wow-ui-source checkout origin/classic_era`: Switch to Classic Era / SoD FrameXML branch.
-- `git -C /home/sam/wow-ui-source checkout origin/classic_anniversary`: Switch to TBC Anniversary FrameXML branch.
-- `git -C /home/sam/wow-ui-source grep -n "<API_NAME>"`: Search official Blizzard FrameXML for exact signatures, mixins, or events.
-
-## In-Game Addon Commands
-- `/tt` or `/tacotip`: Open addon configuration options panel.
-- `/tttest` or `/tacotest`: Execute WoWUnit automated test suites in-game.
-
-## Memory & Documentation Integrity
-- `serena memories check`: Run sanity check on all Serena memory references and link integrity.
+Commands are workflow guidance, not evidence that checks have run. Report actual results and unavailable tooling explicitly.
