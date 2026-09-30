@@ -21,8 +21,9 @@ All notable changes to TacoTip are documented in this file.
   make the offline harness portable (`TACOTIP_TEST_ROOT`, default current folder).
   The first local fix dropped throttled requests and treated an empty inventory
   as fresh for 30 seconds; these are now explicit regression cases.
-- Offline checks do not prove client event timing or server throttling. Live
-  verification remains required; see `Tests/harness/README.md`.
+- TBC Anniversary user testing confirmed that equipment loads progressively
+  without hanging. Other clients have offline coverage only; their live behavior
+  remains unverified. See `Tests/harness/README.md`.
 
 | Version | Date | Summary |
 | :--- | :--- | :--- |

@@ -237,5 +237,6 @@ item updates and preservation of Classic/modern specialization data. The suite
 is included in `run_all.sh`; `TACOTIP_TEST_ROOT` can select another addon root.
 The suite fails against the original library as well as the first local hotfix.
 
-These are simulated clients. Verify real item arrival, server throttling and
-interoperation in game before claiming support has been confirmed on every client.
+TBC Anniversary user testing confirmed that equipment loads progressively without
+hanging. Other clients are simulated here; verify their real item arrival, server
+throttling and interoperation before claiming live support is confirmed everywhere.
