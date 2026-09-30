@@ -200,4 +200,4 @@
 
 ## Universal inspection restoration
 
-The queue/cache regression harness lives in `TacoTip_Forever/Tests/harness/inspect_test.lua` and runs in the portable matrix. See the nested changelog for behavior and validation limits; this is not a published release.
+The queue/cache regression harness lives in `TacoTip_Forever/Tests/harness/inspect_test.lua` and runs in the portable matrix (115 inspection scenarios, including bounded availability deferral). See the nested changelog for behavior and validation limits; this is not a published release.

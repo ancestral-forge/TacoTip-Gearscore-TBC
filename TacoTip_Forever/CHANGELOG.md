@@ -8,6 +8,11 @@ All notable changes to TacoTip are documented in this file.
   20 queued players, a 2-second shared-channel delay, a 5-second response timeout,
   and at most 3 attempts before a 10-second cooldown. Queued requests resume after
   combat or manual inspection without another tooltip hover.
+- Keep requests when their unit token temporarily disappears or `CanInspect`
+  rejects/errors. Defer them for up to 15 seconds from the first unavailable
+  queue check, rotating them behind other players; repeated hovers do not reset
+  the deadline. Expired requests enter the same 10-second cooldown.
+  Added five regression cases across all clients after review exposed this gap.
 - Respect requests from Blizzard and other addons; never clear their shared
   inspect data. Resolve changing target/mouseover tokens by GUID, including party
   and raid units. No new automatic whole-group scanning is introduced.
@@ -23,7 +28,8 @@ All notable changes to TacoTip are documented in this file.
   as fresh for 30 seconds; these are now explicit regression cases.
 - TBC Anniversary user testing confirmed that equipment loads progressively
   without hanging. Other clients have offline coverage only; their live behavior
-  remains unverified. See `Tests/harness/README.md`.
+  remains unverified. The later availability-deferral fix has offline coverage
+  only. See `Tests/harness/README.md`.
 
 | Version | Date | Summary |
 | :--- | :--- | :--- |

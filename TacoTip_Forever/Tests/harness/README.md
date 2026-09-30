@@ -230,13 +230,15 @@ post-call that never fired.
 ## Asynchronous inspection regression tests
 
 From `TacoTip_Forever/`, run `lua5.1 Tests/harness/inspect_test.lua`. The real
-library is loaded against five independent client environments (90 scenarios).
+library is loaded against five independent client environments (115 scenarios).
 Tests cover manual inspection priority, queued/repeated hovers, combat, bounded
 retries, external requests, GUID/token changes, incomplete inventory, event-only
-item updates and preservation of Classic/modern specialization data. The suite
+item updates, preservation of Classic/modern specialization data, temporary token
+loss or `CanInspect` failure, queue fairness and bounded deferral expiry. The suite
 is included in `run_all.sh`; `TACOTIP_TEST_ROOT` can select another addon root.
 The suite fails against the original library as well as the first local hotfix.
 
 TBC Anniversary user testing confirmed that equipment loads progressively without
-hanging. Other clients are simulated here; verify their real item arrival, server
+hanging before the availability-deferral follow-up; that follow-up is verified
+by offline regression tests. Other clients are simulated here; verify their real item arrival, server
 throttling and interoperation before claiming live support is confirmed everywhere.

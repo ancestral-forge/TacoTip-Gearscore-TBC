@@ -260,7 +260,10 @@ Background tooltip inspections use a GUID-keyed queue (20 players maximum).
 Requests wait during combat or while the standard inspect window is open, and
 resume automatically. Requests share a 2-second delay with other inspect callers;
 missing or partial responses retry up to 3 times with a 5-second timeout, then
-back off for 10 seconds. Complete inventory and talent data are cached for 10
+back off for 10 seconds. A temporarily missing or uninspectable player stays
+queued for up to 15 seconds after the scheduler first detects the problem,
+without blocking other players; expiry also starts a 10-second cooldown.
+Complete inventory and talent data are cached for 10
 seconds, with at most 500 cached players. Inventory change events refresh items
 without replacing talent data from another inspection. Requests follow players
 across target, mouseover, focus, party and raid tokens; this does not scan entire

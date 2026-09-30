@@ -152,6 +152,63 @@ local cases={
     {"nil event not attributed to mutable mouseover",function(s)
         s.lib:DoInspect("mouseover");s.units.mouseover="Player-D";s:ready(nil);assert(s.lib.cache["Player-D"]==nil)
     end},
+    {"missing token returns without another hover", function(s)
+        s.combat = true
+        s.lib:DoInspect("target")
+        s.units.target = nil
+        s.combat = false
+        s:advance(3)
+        assert(#s.requests == 0)
+        s.units.party2 = "Player-A"
+        s:advance(1)
+        assert(#s.requests == 1 and s.requests[1].guid == "Player-A")
+    end},
+    {"temporary CanInspect rejection is deferred", function(s)
+        s.env.CanInspect = function() return false end
+        s.lib:DoInspect("target")
+        s:advance(3)
+        assert(#s.requests == 0)
+        s.env.CanInspect = s.env.UnitExists
+        s:advance(1)
+        assert(#s.requests == 1 and s.requests[1].guid == "Player-A")
+    end},
+    {"temporary CanInspect error is deferred", function(s)
+        s.env.CanInspect = function() error("temporarily unavailable") end
+        s.lib:DoInspect("target")
+        s:advance(3)
+        s.env.CanInspect = s.env.UnitExists
+        s:advance(1)
+        assert(#s.requests == 1 and s.requests[1].guid == "Player-A")
+    end},
+    {"unavailable request does not block another player", function(s)
+        s.combat = true
+        s.lib:DoInspect("target")
+        s.lib:DoInspect("mouseover")
+        s.env.CanInspect = function(unit) return unit ~= "target" end
+        s.combat = false
+        s:advance(1)
+        assert(#s.requests == 1 and s.requests[1].guid == "Player-B")
+        s:ready("Player-B")
+        s.env.CanInspect = s.env.UnitExists
+        s:advance(2)
+        assert(#s.requests == 2 and s.requests[2].guid == "Player-A")
+    end},
+    {"unavailable request expires despite repeated hovers", function(s)
+        s.env.CanInspect = function() return false end
+        s.lib:DoInspect("target")
+        for _ = 1, 20 do
+            s:advance(1)
+            s.lib:DoInspect("target")
+        end
+        assert(#s.requests == 0)
+        s.env.CanInspect = s.env.UnitExists
+        assert(not s.lib:DoInspect("target"), "expired request should be in cooldown")
+        s:advance(1)
+        assert(#s.requests == 0, "expired request must not remain queued")
+        s:advance(5)
+        s.lib:DoInspect("target")
+        assert(#s.requests == 1)
+    end},
     {"queue is bounded",function(s)
         s.combat=true
         for i=1,25 do s.units["raid"..i]="Player-"..i;s.lib:DoInspect("raid"..i) end

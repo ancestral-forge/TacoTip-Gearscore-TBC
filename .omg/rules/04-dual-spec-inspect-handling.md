@@ -14,4 +14,4 @@ globs: ["main.lua", "Libs/LibClassicInspector/*.lua"]
 ## Universal build inspection
 
 - Apply the same inspection discipline to `TacoTip_Forever/Libs/LibForeverInspector/`: preserve per-client talent paths; do not read talents from inventory-only events.
-- Defer background work while manual inspection is open. Never clear another listener's inspect data. Test queued retries and mutable unit tokens with the real library.
+- Defer background work while manual inspection is open. Never clear another listener's inspect data. Retain temporarily unavailable GUIDs with bounded deferral; test recovery, expiry and queue fairness with the real library.

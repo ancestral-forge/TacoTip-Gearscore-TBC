@@ -53,4 +53,4 @@ TacoTip Gearscore TBC is an enterprise-grade World of Warcraft Classic addon pro
 
 ## Universal inspector update
 
-`TacoTip_Forever/Libs/LibForeverInspector/LibForeverInspector.lua` minor 3 restores bounded GUID queues, manual-inspect priority and inventory-event refresh. See the nested changelog and `Tests/harness/inspect_test.lua`; TBC Anniversary user testing confirmed equipment eventually loads without hangs; other clients remain validated only by offline tests.
+`TacoTip_Forever/Libs/LibForeverInspector/LibForeverInspector.lua` minor 3 restores bounded GUID queues with 15-second availability deferral, manual-inspect priority and inventory-event refresh. See the nested changelog and `Tests/harness/inspect_test.lua`; TBC Anniversary user testing confirmed equipment eventually loads without hangs; other clients remain validated only by offline tests.

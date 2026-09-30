@@ -3364,6 +3364,7 @@ end
 
 -- Inspect requests share a single client channel with Blizzard and other addons.
 local INSPECT_INTERVAL, INSPECT_TIMEOUT, REFRESH_INTERVAL = 2, 5, 10
+local DEFER_TIMEOUT = 15
 local MAX_ATTEMPTS, MAX_QUEUE, MAX_CACHE = 3, 20, 500
 local queue, cacheOrder = {}, {}
 local unitHints = {"target", "mouseover", "focus"}
@@ -3529,9 +3530,11 @@ local function pumpQueue()
     for _ = 1, #queue do
         local request = table.remove(queue, 1)
         local unit = findUnit(request.guid, request.unit)
-        if (unit and not fresh(request.guid)) then
-            local ok, allowed = pcall(CanInspect, unit)
+        if (not fresh(request.guid)) then
+            local ok, allowed = false, false
+            if (unit) then ok, allowed = pcall(CanInspect, unit) end
             if (ok and plain(allowed) and allowed) then
+                request.deferUntil = nil
                 request.unit, request.sent = unit, now
                 request.attempts = request.attempts + 1
                 pending = request
@@ -3544,6 +3547,14 @@ local function pumpQueue()
                     retry(request)
                 end
                 return
+            end
+            -- Keep transiently unavailable GUIDs, but let other players proceed.
+            -- Repeated hovers must not extend this deadline indefinitely.
+            request.deferUntil = request.deferUntil or (now + DEFER_TIMEOUT)
+            if (now < request.deferUntil) then
+                enqueue(request)
+            else
+                cacheEntry(request.guid).retryAfter = now + REFRESH_INTERVAL
             end
         end
     end

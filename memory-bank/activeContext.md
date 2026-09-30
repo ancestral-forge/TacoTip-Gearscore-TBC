@@ -218,4 +218,4 @@ Current guidance for future sessions:
 
 ## Universal inspection restoration
 
-Work is scoped to `TacoTip_Forever/`: bounded GUID queue, inventory-event refresh and client-specific regression coverage. See the nested changelog; TBC Anniversary user testing confirmed equipment eventually loads without hangs. Other clients have offline coverage only.
+Work is scoped to `TacoTip_Forever/`: bounded GUID queue with temporary-unavailability recovery, inventory-event refresh and client-specific regression coverage. See the nested changelog; TBC Anniversary user testing confirmed equipment eventually loads without hangs. Other clients have offline coverage only.
