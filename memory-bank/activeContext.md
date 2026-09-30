@@ -1,5 +1,24 @@
 # Active Context
 
+## 2026-09-21 - TacoTip Forever: Universal Cross-Client Architecture & Test Hardening
+
+- **Universal Multi-Engine Client Support:** Unified `TacoTip_Forever/` to run across all World of Warcraft engine families:
+  - Classic Era & Season of Discovery (`11509`)
+  - TBC Classic Anniversary (`20506`, `20507`)
+  - WotLK Classic & Titanforge (`38001`, `30405`)
+  - WoW Forever (`16001`)
+  - Retail / Live (`110002` – `120100`)
+- **LibForeverInspector:** Added multi-engine runtime gates (`IsClassic`, `IsTBC`, `IsWotlk`, `IsForever`, `IsRetail`), backward-compatibility alias for `LibClassicInspector`, full spec & icon tables, and nil-safe `C_Item.GetInventoryItemLink` delegation.
+- **Adaptive GearScore Engine:** Client-aware bracket sizing (200 Era, 400 TBC, 1000 WotLK/Forever/Retail) and dynamic `C_Item.GetItemInfo` resolution.
+- **Cross-Engine Pawn Bridge:** Dynamically resolves scale prefixes (`MrRobot:` fallback to `Classic:`) and version variables.
+- **Tooltip Pipeline Hardening:** Eliminated Lua 5.3+ float formatting crashes via floored `makeColorCode(r, g, b)`, normalized `getClassColor` calling conventions, and guarded group/raid API invocations.
+- **Verification & Zero-Warning Gate:** Passed `luacheck TacoTip_Forever/` with 0 warnings / 0 errors across all 21 files; all 153 WoWUnit test assertions passing cleanly in the test harness.
+- **3D Portrait Dynamic Screen-Edge Flipping:** In `ApplyTooltipAppearance`, dynamically calculates tooltip right boundary against screen width (`UIParent:GetRight()` / `_G["GetScreenWidth"]()`). When the tooltip is anchored near the right screen edge, the portrait automatically flips to the left side (`TOPRIGHT -> TOPLEFT (-8, 0)`), preventing the enlarged model from rendering off-screen.
+- **Mouse Anchor OnUpdate Idle Gating:** Added `(not TacoTipConfig.anchor_mouse or not GameTooltip or not GameTooltip:IsShown())` early-return check to `TacoTipMouseAnchor:SetScript("OnUpdate")`, eliminating 144–240Hz cursor position queries, scale calculations, and frame point mutations when the tooltip is hidden.
+- **Extended Non-Unit Visual Clearing:** Hooked `ItemRefShoppingTooltip1`, `ItemRefShoppingTooltip2`, `WorldMapCompareTooltip1`, and `WorldMapCompareTooltip2` into `registerTooltipVisualClearing` to ensure comparison tooltips never inherit unit-specific borders or state.
+- **Padding Cleanup Fallback:** Added `elseif (tooltip.SetPadding) then tooltip:SetPadding(0, 0, 0, 0) end` fallback to `clearTooltipVisuals` for clients lacking `ClearPadding()`.
+- **Quality Gate Verification:** Passed static analysis via `luacheck .` with 0 warnings / 0 errors across all 42 files; verified syntax on Lua 5.1.
+
 ## 2026-09-13 - v0.7.6: Enterprise Audit, 3D Portrait Resizing & Zero-Allocation Pipeline
 
 - **3D Portrait Resizing:** Increased base 3D model viewport dimensions from `60x80` to `72x96` (+20% size increase, strictly maintaining exact 3:4 aspect ratio with integer dimensions at 50/100/150/200% scale). Throttled model `OnUpdate` alpha synchronization to 20Hz (0.05s) using parent frame alpha caching.

@@ -4,6 +4,7 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 
 | Version | Date | Summary |
 | --- | --- | --- |
+| `0.7.7` | `2026-09-18` | Enterprise performance hardening & hot-path zero-allocation pass: Converted all 38 `onTooltipSetUnit` line insertion points from dynamic table allocations to static record pooling (`addLineDouble` / `addLineSingle`). Replaced player line allocation with `wipe(pooledPlayerText)`. Eliminated all `unpack(v)` operations in line rendering. Dynamic 3D portrait screen-edge flipping preventing off-screen model clipping. Gated `TacoTipMouseAnchor` OnUpdate behind `GameTooltip:IsShown()`. Hooked comparison tooltips (`ItemRefShoppingTooltip1/2`, `WorldMapCompareTooltip1/2`) into `registerTooltipVisualClearing`. Added padding cleanup fallback. Zero luacheck warnings across all 42 files. |
 | `0.7.6` | `2026-09-13` | Enterprise audit & performance pass: 3D portrait enlarged to `72x96` (strictly preserving 3:4 aspect ratio with integer dimensions at 50/100/150/200% scale). Zero-allocation hover pipeline (pooled buffer tables in `main.lua` and zero-alloc `scoreFromItemValues` in `gearscore.lua`). SharedMedia resolution caching (`TT:InvalidateResolvedMediaCache`) eliminating $O(N \log N)$ table sorts on hover. PowerBar event lifecycle hardened against combat event floods. Deduplicated redundant `GameTooltip` `OnTooltipCleared` and `OnHide` hooks. Gated `UNIT_TARGET` event processing. Throttled 3D portrait `OnUpdate` alpha sync to 20Hz. Pure white friendly player levels. New unit tests in `TacoTip_Tests.lua`. |
 | `0.7.5` | `2026-09-11` | Dual-spec active/inactive rendering fixed: the inactive spec name renders in lowest GearScore quality grey (`0.50, 0.50, 0.50` / `GRAY_FONT_COLOR`), the active spec name renders in its class color, and talent point numbers `[x/x/x]` render in clean white for both specs. New `Stats:DualSpecDimRendering` regression test. Performance: `MODIFIER_STATE_CHANGED` re-render gated to shown tooltips on shift-sensitive styles (2/4), mouse-anchor `OnUpdate` no-ops while mouse anchoring is disabled, item tooltip hook skips `IsEquippableItem`/`GetItemInfo` when both item features are off, Pawn scale name built once per scoring pass. Options: non-Wrath clients no longer force-write `show_achievement_points = false` into saved config (render path stays WotLK-gated). |
 | `0.7.4` | `2026-09-10` | Per-tooltip lifecycle state: every timer, generation counter, item-load handle and the power-bar cleanup are now owned per tooltip frame, so clear/hide of one tooltip can no longer cancel another's pending work. Cancellable item-data refresh on uncached equippable items via C_Item continuation (generation + link guarded, with a `C_Item.RequestLoadItemDataByID` fallback and delayed-tooltip timer hardening). Duplicate equipped-item id dedupe at every Gearscore/Pawn callback registration site. `getOrCreateItemMixin` hoisted to module scope in LibClassicInspector (no per-slot closure allocation on the inspect hot path). Three new WoWUnit regression tests. Zero luacheck warnings. |
@@ -33,6 +34,37 @@ All notable changes to TacoTip Gearscore TBC will be documented in this file.
 | `0.4.9` | `2026-05-28` | Release polish: final locale sync, maintainer text update, language list/docs refresh, and release metadata bump |
 | `0.4.8` | `2026-05-28` | First public upload: compatibility restoration, modern options UI, tooltip polish, and localization pass |
 | `0.0.1` | `2026-05-18` | Internal revival baseline before packaging |
+
+## [0.7.7] - 2026-09-18
+
+### Performance & Memory Optimization - 0.7.7
+
+- **Hot-Path Zero-Allocation `linesToAdd` Pipeline:**
+  - Converted all 38 `tinsert(linesToAdd, { ... })` sites in `onTooltipSetUnit` to reusable static records via `addLineDouble(...)` (wide style) and `addLineSingle(...)` (compact / standard style).
+  - Replaced player line allocation `local newText = {}` with static table reuse: `wipe(pooledPlayerText); local newText = pooledPlayerText`.
+  - Eliminated all `unpack(v)` calls in tooltip line rendering, switching to direct index access (`v[1]`, `v[2]`, ...).
+  - Validated zero GC table generation on repeated mouseover scans via standalone test harness.
+
+- **Mouse Anchor Idle CPU Gating:**
+  - Added early-return check `(not TacoTipConfig.anchor_mouse or not GameTooltip or not GameTooltip:IsShown())` to `TacoTipMouseAnchor`'s `OnUpdate` handler.
+  - Halts 144–240Hz cursor position queries, UI scale division, and point mutations when tooltips are hidden.
+
+### Visual & Layout Polish - 0.7.7
+
+- **Dynamic 3D Portrait Screen-Edge Flipping:**
+  - During `ApplyTooltipAppearance`, dynamically calculates tooltip right boundary against screen width (`UIParent:GetRight()` / `_G["GetScreenWidth"]()`).
+  - When the actual tooltip itself touches or exceeds the right screen edge (`tooltipRight >= screenWidth`), the portrait flips to the left side (`TOPRIGHT -> TOPLEFT, -8, 0`).
+
+- **Extended Non-Unit Visual Clearing:**
+  - Registered `ItemRefShoppingTooltip1`, `ItemRefShoppingTooltip2`, `WorldMapCompareTooltip1`, and `WorldMapCompareTooltip2` into `registerTooltipVisualClearing` so comparison tooltips cleanly clear any inherited unit state.
+
+- **Padding Cleanup Fallback:**
+  - Added `elseif (tooltip.SetPadding) then tooltip:SetPadding(0, 0, 0, 0) end` fallback to `clearTooltipVisuals` for clients lacking `ClearPadding()`.
+
+### Testing & Verification - 0.7.7
+
+- **Static Analysis:**
+  - Zero warnings, zero errors in `luacheck .` across all 42 files.
 
 ## [0.7.6] - 2026-09-13
 

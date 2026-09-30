@@ -17,26 +17,15 @@ To ensure non-unit tooltips (items, spells, buffs, action buttons, map POIs) nev
   4. Hide 2D portrait (`tooltip.TacoTipPortrait:Hide()`)
   5. Clean 3D portrait: `tooltip.TacoTipPortrait3D:Hide()`, `pcall(tooltip.TacoTipPortrait3D.ClearModel)`, `tooltip.TacoTipPortrait3D:SetAlpha(1)`
   6. Hide and stop power bar ticker (`TacoTipPowerBar:Hide()`, `stopPowerBarTicker()`)
-  7. Reset tooltip custom padding
+  7. Reset tooltip custom padding (`ClearPadding()` or `SetPadding(0, 0, 0, 0)`)
+  8. Registered on GameTooltip, ShoppingTooltips, ItemRefTooltip, ItemRefShoppingTooltips, WorldMapTooltips, WorldMapCompareTooltips, and SmallTextTooltip
 
 ---
 
-## 2. 3D Portrait Real-Time Alpha Synchronization
+## 2. 3D Portrait Alpha Sync & Screen-Edge Detection
 
-- **Problem:** WoW `PlayerModel` frames render geometry in a separate pass and do not automatically inherit parent alpha during `GameTooltip:FadeOut()`.
-- **Solution:** In `ensureTooltipPortrait`, attach an `OnUpdate` script on `tooltip.TacoTipPortrait3D`:
-
-  ```lua
-  tooltip.TacoTipPortrait3D:SetScript("OnUpdate", function(self)
-      if (tooltip and tooltip.GetAlpha) then
-          local a = tooltip:GetAlpha()
-          if (self:GetAlpha() ~= a) then
-              self:SetAlpha(a)
-          end
-      end
-  end)
-  ```
-
+- **Alpha Synchronization:** In `ensureTooltipPortrait`, attach an `OnUpdate` script on `tooltip.TacoTipPortrait3D` syncing to parent alpha at 20Hz.
+- **Screen-Edge Clipping Prevention:** During `ApplyTooltipAppearance`, dynamically check if `tooltipRight + portraitW + 8 > screenWidth`. If near the right edge of the screen, dynamically flip the portrait anchor from `TOPLEFT -> TOPRIGHT` to `TOPRIGHT -> TOPLEFT (-8, 0)` so the enlarged portrait never renders off-screen.
 - **Lifecycle Guarantees:**
   - Zero timer drift or race conditions.
   - When `tooltip` hides, the engine halts the `OnUpdate` script automatically.
@@ -44,7 +33,15 @@ To ensure non-unit tooltips (items, spells, buffs, action buttons, map POIs) nev
 
 ---
 
-## 3. Minimap & World Map Flicker Prevention
+## 3. High-Performance Zero-Allocation Hover Pipeline
+
+- `pooledLinesToAdd`, `pooledLineRecords`, `linesToAddCount`, and `pooledPlayerText` recycle sub-tables for all tooltip text lines via `addLineDouble` and `addLineSingle`.
+- Completely eliminates 38 anonymous table literals per hover and eliminates all `unpack(v)` operations in line rendering.
+- `TacoTipMouseAnchor:SetScript("OnUpdate")` returns immediately when `not TacoTipConfig.anchor_mouse or not GameTooltip or not GameTooltip:IsShown()`, saving 144–240Hz cursor polling and layout calculations when tooltips are hidden.
+
+---
+
+## 4. Minimap & World Map Flicker Prevention
 
 - `GameTooltip:EnableMouse(false)` is enforced inside `GameTooltip_SetDefaultAnchor` so the tooltip never intercepts mouse events and prevents `OnEnter`/`OnLeave` flicker cycles.
 - Caller frame ownership is strictly preserved on `GameTooltip` (never overridden with `SetOwner(TacoTipMouseAnchor)`).

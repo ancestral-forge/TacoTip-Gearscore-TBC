@@ -4,14 +4,27 @@ max_line_length = 500
 unused_args = false
 
 read_globals = {
+    -- WoW extends the standard `table` library with wipe(); it is a real global
+    -- field on every supported client (28-37 Blizzard call sites per branch).
+    -- Preferred over the bare `wipe` global, which is protected on 10.0+.
+    table = { fields = { "wipe" } },
     "BackdropTemplateMixin",
     "C_AddOns",
     "C_Item",
     "C_Map",
     "C_NamePlate",
+    "C_PaperDollInfo",
     "C_PlayerInfo",
     "C_SpecializationInfo",
     "C_Timer",
+    "Enum",
+    "TooltipDataProcessor",
+    "TooltipUtil",
+    "UnitTokenFromGUID",
+    "GetAverageItemLevel",
+    "GetSpecialization",
+    "GetSpecializationInfo",
+    "GetSpecializationInfoByID",
     "CANCEL",
     "CanInspect",
     "CastingBarMixin",
@@ -100,6 +113,12 @@ read_globals = {
     "NotifyInspect",
     "PaperDollFrame",
     "PawnClassicLastUpdatedVersion",
+    -- Pawn's own registries. PawnCommon.Scales is the exact table Pawn looks a
+    -- scale name up in, and PawnScaleProviders holds the registered provider
+    -- names; pawn.lua reads both to resolve the library prefix per client without
+    -- calling an API that reports an unknown name by printing to chat.
+    "PawnCommon",
+    "PawnScaleProviders",
     "PawnGetItemData",
     "PawnGetScaleColor",
     "PawnGetSingleValueFromItem",
@@ -191,6 +210,8 @@ globals = {
     "SLASH_TACOTIP6",
     "SLASH_TACOTIP7",
     "TacoTipConfig",
+    -- Still used by the Classic addon's pawn.lua at the repo root; TacoTip_Forever
+    -- no longer needs it (it resolves the scale library from Pawn's registries).
     "_TacoTipPawnReady",
     "TacoTipDragButton",
     "TacoTipMouseAnchor",
@@ -220,4 +241,26 @@ files["Libs/LibClassicInspector/LibClassicInspector.lua"] = {
         "GetNumTalentGroups",
     },
     globals = {},
+}
+
+-- Offline verification harnesses. These load the real addon against a mocked
+-- WoW environment, so they legitimately touch globals the addon never does.
+files["TacoTip_Forever/Tests/harness/*.lua"] = {
+    read_globals = {},
+    globals = {
+        "ERRORS",
+        "COLOR_APPLIED",
+        "DROPDOWN_SETS",
+        "LEGACY_LOG",
+        "PICKER_COLOR",
+        "PICKER_INFO",
+        "SETTINGS_LOG",
+        "POSTCALLS",
+        "ADDLINE_CALLS",
+        "TACO_TIP_DEBUG",
+        "TALENTS",
+        "TALENT_QUERIES",
+        "TALENT_GROUP_POINTS",
+        "TALENT_ACTIVE_GROUP",
+    },
 }

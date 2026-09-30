@@ -1,42 +1,42 @@
 [
   {
     "id": "goal-1",
-    "title": "Deep Audit of Addon Architecture & Blizzard API Sources",
-    "description": "Examine TacoTip codebase against official Blizzard FrameXML sources at /home/sam/wow-ui-source (classic_anniversary, classic_era) to identify performance bottlenecks, memory leaks, redundant C-API roundtrips, and portrait scaling dynamics.",
+    "title": "Port Libraries and Localization Tables to TacoTip_Forever",
+    "description": "Port Libs (LibStub, CallbackHandler-1.0, LibDetours-1.0, LibClassicInspector/inspect helper) and all 11 Locale files from root to TacoTip_Forever, ensuring proper file inclusion and retail/forever compatibility.",
     "status": "completed",
-    "verification_criteria": "Comprehensive audit completed identifying specific hotspots: 3D portrait base dimensions, SharedMedia resolution overhead, PowerBar combat event flood, GameTooltip hook duplicates, and linesToAdd GC allocations.",
-    "evidence": "Audit completed with concrete line references: main.lua 724-725 (portrait size), options.lua 796 (GetTooltipBackgroundChoices called on hover), main.lua 1406 (PowerBar global event leaks), main.lua 1709 (duplicate hooks), gearscore.lua 268 (table wrap)."
+    "verification_criteria": "All Libs and Locale files exist in TacoTip_Forever/, syntax check passes via luac -p.",
+    "evidence": "Copied Libs/ and Locale/ directories into TacoTip_Forever/; updated LibClassicInspector client checks, spec tables for retail classes, and added IsRetail/IsForever methods; verified luac -p syntax clean on all files."
   },
   {
     "id": "goal-2",
-    "title": "Increase 3D Portrait Base Dimensions (3:4 Ratio: 72x96)",
-    "description": "Increase 3D portrait base dimensions in main.lua from 60x80 to 72x96 (+20% size increase, strictly preserving 3:4 aspect ratio). Update WoWUnit unit tests in TacoTip_Tests.lua to verify new base and scaled dimensions.",
+    "title": "Port and Adapt Core Modules (Textures, GearScore, Pawn)",
+    "description": "Port textures.lua, gearscore.lua, and pawn.lua to TacoTip_Forever/, removing Classic client build limits and updating item data queries (C_Item) for Forever and Retail.",
     "status": "completed",
-    "verification_criteria": "Portrait base size is 72x96 (3:4 ratio), cleanly scales to integer dimensions at 50/100/150/200% scale, and unit tests in TacoTip_Tests.lua pass.",
-    "evidence": "Applied 72x96 base dimensions in main.lua; updated TacoTip_Tests.lua to verify 72x96 and 108x144; verified luacheck 0 warnings across 21 files."
+    "verification_criteria": "textures.lua, gearscore.lua, and pawn.lua ported to TacoTip_Forever/ with syntax valid under luac -p and zero-warning luacheck.",
+    "evidence": "Ported textures.lua, gearscore.lua, and pawn.lua to TacoTip_Forever/; removed legacy Classic/TBC/WotLK client limits, modernized item data queries, supported retail MrRobot scales; verified luacheck 0 warnings across all 3 files."
   },
   {
     "id": "goal-3",
-    "title": "High-Frequency Performance & Zero-Allocation Tooltip Pipeline",
-    "description": "Implement caching for resolved SharedMedia assets in options.lua (font, background, border, statusbar) invalidated on change/register; implement table pooling for linesToAdd in main.lua to eliminate GC churn on unit hover; optimize item info scoring in gearscore.lua.",
+    "title": "Port Options UI with Modern Settings API",
+    "description": "Port options.lua to TacoTip_Forever/options.lua, ensuring full compatibility with modern Settings canvas layouts, dropdowns, color pickers, and /taco config commands.",
     "status": "completed",
-    "verification_criteria": "Mouseover tooltips perform zero table allocations for linesToAdd, zero SharedMedia table sorts on hover, and zero redundant GetItemInfo calls.",
-    "evidence": "Cached resolved media in options.lua with TT:InvalidateResolvedMediaCache; pooled linesToAdd and tooltip text in main.lua; zero-allocation scoreFromItemValues in gearscore.lua; verified luacheck 0 warnings across 21 files."
+    "verification_criteria": "options.lua ported to TacoTip_Forever/, /taco slash command works, settings categories register via Settings canvas layout.",
+    "evidence": "Ported options.lua to TacoTip_Forever/; stripped legacy client gates; enabled achievement points directly; verified modern Settings canvas registration and luacheck 0 warnings."
   },
   {
     "id": "goal-4",
-    "title": "Event Handling & Lifecycle Hardening",
-    "description": "Harden TacoTipPowerBar event lifecycle to prevent event processing when hidden, deduplicate GameTooltip lifecycle hooks in main.lua, gate UNIT_TARGET event processing when tooltip is hidden, and throttle 3D portrait OnUpdate alpha sync.",
+    "title": "Port Main Tooltip Engine (TooltipDataProcessor & Visual Overlays)",
+    "description": "Port main.lua to TacoTip_Forever/main.lua, implementing modern TooltipDataProcessor post-call hooks, unit resolution via TooltipUtil.GetDisplayedUnit, 3D portrait rendering, health/power bars, and custom position mover.",
     "status": "completed",
-    "verification_criteria": "PowerBar registers/unregisters events cleanly with no execution when hidden, duplicate OnTooltipCleared/OnHide hooks eliminated, and 3D portrait runs a static 20Hz throttled handler.",
-    "evidence": "PowerBar event handler gated on IsShown with unregistration on ticker stop; removed redundant GameTooltip OnTooltipCleared/OnHide hooks; throttled 3D portrait OnUpdate to 20Hz; gated UNIT_TARGET on GameTooltip:IsShown() and show_target; verified luacheck 0 warnings across 21 files."
+    "verification_criteria": "main.lua ported to TacoTip_Forever/ with TooltipDataProcessor integration, syntax clean, handling nil/unknown/false values identical to Classic.",
+    "evidence": "Ported main.lua to TacoTip_Forever/; implemented TooltipDataProcessor.AddTooltipPostCall for unit and item tooltips; modernized resolveTooltipUnit with TooltipUtil and UnitTokenFromGUID; verified 0 luacheck warnings."
   },
   {
     "id": "goal-5",
-    "title": "Static Analysis, Regression Suite & Documentation Synchronization",
-    "description": "Execute luacheck . across all 21 files ensuring zero warnings and zero errors. Synchronize all memory files, rule packs, techContext, activeContext, README.md, and CHANGELOG.md with 72x96 portrait size and architectural enhancements.",
+    "title": "TOC Packaging, Static Analysis & Testing Suite",
+    "description": "Create TacoTip_Forever.toc with correct Interface versions, update .luacheckrc, verify 0 warnings / 0 errors across all ported files, and create/run test suite.",
     "status": "completed",
-    "verification_criteria": "luacheck . passes with 0 warnings / 0 errors in 21 files, tests pass, and all documentation reflects exact updated code parameters.",
-    "evidence": "luacheck . passed with 0 warnings and 0 errors across all 21 files; luac -p passed; TacoTip_Tests.lua updated; synchronized version 0.7.6, 72x96 portrait size, zero-alloc buffer pooling, and media resolution caching across TacoTip.toc, main.lua, options.lua, README.md, CHANGELOG.md, AGENTS.md, MEMORY.md, and memory-bank."
+    "verification_criteria": "luacheck passes with 0 warnings/errors across TacoTip_Forever, test suite executes successfully.",
+    "evidence": "Created TacoTip_Forever.toc and TacoTip.toc with Interface versions 16001 (Forever) and 110000+ (Retail); created TacoTip_Forever_Tests.lua; verified luacheck passes with 0 warnings and 0 errors across all 21 files in TacoTip_Forever and 63 files project-wide."
   }
 ]

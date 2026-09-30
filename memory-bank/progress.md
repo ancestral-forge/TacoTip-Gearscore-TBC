@@ -1,5 +1,19 @@
 # Progress
 
+## 2026-09-21 - TacoTip Forever: Universal Cross-Client Architecture & Test Hardening
+
+- **Universal Multi-Engine Client Support:** Unified `TacoTip_Forever/` to run across Classic Era/SoD (`11509`), TBC Anniversary (`20506`, `20507`), WotLK/Titanforge (`38001`, `30405`), WoW Forever (`16001`), and Retail/Live (`110002` – `120100`).
+- **Adaptive Quality Brackets:** Dynamic bracket scaling (200 Era, 400 TBC, 1000 WotLK/Forever/Retail) and dynamic `C_Item.GetItemInfo` resolution.
+- **Cross-Engine Pawn Bridge:** Dynamically resolves scale prefixes (`MrRobot:` fallback to `Classic:`) and version variables (`PawnLastUpdatedVersion` / `PawnClassicLastUpdatedVersion`).
+- **Tooltip Pipeline Hardening:** Eliminated Lua 5.3+ float formatting crashes via floored `makeColorCode(r, g, b)`, normalized `getClassColor` calling conventions, and guarded group/raid API invocations.
+- **Verification & Zero-Warning Gate:** Passed `luacheck TacoTip_Forever/` with 0 warnings / 0 errors across all 21 files; all 153 WoWUnit test assertions passing cleanly in the test harness.
+- **NineSlice Center Color Synchronization:** Applied `tooltip.NineSlice:SetCenterColor` in `ApplyTooltipAppearance` and restored default center coloring in `resetTooltipBorderToDefault` for accurate backdrop color rendering on modern Classic clients.
+- **3D Portrait Dynamic Screen-Edge Flipping:** Dynamically checks tooltip right edge against screen width and flips portrait to the left side (`TOPRIGHT -> TOPLEFT (-8, 0)`) when near screen edge, preventing 3D model clipping off-screen.
+- **Mouse Anchor OnUpdate Idle Gating:** Gated `TacoTipMouseAnchor:SetScript("OnUpdate")` with `(not TacoTipConfig.anchor_mouse or not GameTooltip or not GameTooltip:IsShown())`, saving 144–240Hz cursor polling and layout calculations when tooltips are hidden.
+- **Extended Non-Unit Visual Clearing:** Hooked `ItemRefShoppingTooltip1/2` and `WorldMapCompareTooltip1/2` into `registerTooltipVisualClearing`.
+- **Padding Cleanup Fallback:** Added `SetPadding(0, 0, 0, 0)` fallback in `clearTooltipVisuals` when `ClearPadding()` is not present.
+- **Verification & Static Analysis:** Passed `luacheck .` with 0 warnings / 0 errors across all 42 files; verified syntax on Lua 5.1.
+
 ## 2026-09-13 - v0.7.6: Enterprise Audit, 3D Portrait Resizing & Performance Optimization
 
 - **3D Portrait Resizing:** Enlarged 3D character portrait base dimensions from `60x80` to `72x96` (clean integer scaling at all stops: 36x48, 72x96, 108x144, 144x192). Throttled model `OnUpdate` alpha sync to 20Hz (0.05s).

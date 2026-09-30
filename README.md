@@ -17,17 +17,17 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 
 | Field | Details |
 | --- | --- |
-| Addon | TacoTip Gearscore TBC |
+| Addon | TacoTip - Gearscore & iLvl TBC - Era - SoD |
 | Status | Release-ready public build |
 | Main purpose | Tooltip enhancement, inspection data, and character UI polish |
 | Supported clients | Classic Era / Vanilla (`11509`), Season of Discovery (`11509`), TBC Classic Anniversary (`20506`), Titanforge (`38001`) |
 | Installation | Copy the `TacoTip` folder into `Interface/AddOns` |
 | Dependencies | Required libraries are bundled; Pawn support is optional |
-| Public version | `v0.7.6` |
+| Public version | `v0.7.7` |
 
-## Why TacoTip Gearscore TBC exists
+## Why TTacoTip - Gearscore & iLvl | TBC - Era - SoD | exists
 
-| Original TacoTip | TacoTip Gearscore TBC |
+| Original TacoTip | TacoTip - Gearscore & iLvl | TBC - Era - SoD | |
 | --- | --- |
 | Broke on TBC Classic | Restored to working order for Classic-era clients |
 | Had no clear revival path | Clean fork with updated Blizzard API wiring |
@@ -58,7 +58,17 @@ The original addon stopped working for TBC Classic, so this fork exists to make 
 | **Compact Tooltip `iLvl` Line** | Compact player tooltips show a separate `iLvl` line under GearScore so users can see both values without switching to wide layout. |
 | **Smart Mover Positioning** | Green mover handle defaults to `TOPLEFT` corner; dragging continuously re-anchors the live tooltip on screen in real-time. |
 
-## What's new in v0.7.6 (Latest Update)
+## What's new in v0.7.7 (Latest Update)
+
+| Fix / Change | Description |
+| --- | --- |
+| **Hot-Path Zero-Allocation Migration** | Converted all 38 tooltip line insertion points in `onTooltipSetUnit` from dynamic table allocations (`{ ... }`) to static record pooling (`addLineDouble` / `addLineSingle`). Replaced player line allocations with `wipe(pooledPlayerText)`. Eliminated all `unpack(v)` operations in tooltip line rendering. |
+| **Dynamic 3D Portrait Screen-Edge Flipping** | During `ApplyTooltipAppearance`, dynamically calculates tooltip right boundary against screen width (`UIParent:GetRight()` / `_G["GetScreenWidth"]()`). If anchored near the right edge of the screen, the portrait automatically flips to the left (`TOPRIGHT -> TOPLEFT (-8, 0)`), preventing the enlarged 3D model viewport from clipping off-screen. |
+| **Mouse Anchor OnUpdate Idle Gating** | Added `(not TacoTipConfig.anchor_mouse or not GameTooltip or not GameTooltip:IsShown())` early-return check to `TacoTipMouseAnchor's` `OnUpdate` handler, eliminating 144–240Hz cursor position queries, UI scale math, and point mutations when tooltips are hidden. |
+| **Extended Non-Unit Visual Clearing** | Registered `ItemRefShoppingTooltip1`, `ItemRefShoppingTooltip2`, `WorldMapCompareTooltip1`, and `WorldMapCompareTooltip2` into `registerTooltipVisualClearing` to isolate comparison tooltips from inheriting stale unit states or borders. |
+| **Padding Cleanup Fallback** | Added `elseif (tooltip.SetPadding) then tooltip:SetPadding(0, 0, 0, 0) end` fallback to `clearTooltipVisuals` for clients without `ClearPadding()`. |
+
+## What's new in v0.7.6 (Recent v0.7.x Update)
 
 | Fix / Change | Description |
 | --- | --- |
@@ -168,7 +178,7 @@ Tooltip layouts behave as follows:
 
 TBC Classic Anniversary patch `2.5.6` uses interface `20506`, which is the target version this fork now validates against.
 
-TacoTip is also compatible with Chinese Titanforge / private-server clients that report a Wrath-family `3.80.1` build, because the addon runtime accepts build major `3` and the Classic-era code paths remain enabled.
+TacoTip is also compatible with Chinese Titanforge `3.80.1` build, because the addon runtime accepts build major `3` and the Classic-era code paths remain enabled.
 
 ## Slash commands
 

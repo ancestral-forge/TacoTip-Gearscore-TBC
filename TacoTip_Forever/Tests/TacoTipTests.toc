@@ -1,0 +1,9 @@
+## Interface: 11509, 20506, 38002, 16001, 110002, 110100, 110200, 120000, 120100
+## Title: TacoTip Tests
+## Notes: Opt-in WoWUnit suite. Copy this folder to Interface/AddOns/TacoTipTests/ and enable it alongside TacoTip, then run /tttest.
+## Author: AcidBomb
+## DefaultState: disabled
+## Dependencies: TacoTip_Forever
+## OptionalDependencies: WoWUnit
+
+TacoTip_Forever_Tests.lua

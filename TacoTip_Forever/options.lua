@@ -1,31 +1,21 @@
 local addOnName = ...
 local addOnVersion = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Version")) or
-    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.7"
+    (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Version")) or "0.7.8"
 local addOnTitle = (GetAddOnMetadata and GetAddOnMetadata(addOnName, "Title")) or
     (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(addOnName, "Title")) or addOnName
 local LoadAddOn = _G.LoadAddOn
 local tinsert = tinsert or table.insert
 
-local interfaceVersion = select(4, GetBuildInfo()) or 0
-local clientBuildMajor = math.floor(interfaceVersion / 10000)
--- load only on the Classic-era client families TacoTip supports (Vanilla/TBC/Wrath)
-if (clientBuildMajor < 1 or clientBuildMajor > 3) then
-    return
-end
 
-assert(LibStub, "TacoTip requires LibStub")
-assert(LibStub:GetLibrary("LibClassicInspector", true), "TacoTip requires LibClassicInspector")
-assert(LibStub:GetLibrary("LibDetours-1.0", true), "TacoTip requires LibDetours-1.0")
---assert(LibStub:GetLibrary("LibClassicGearScore", true), "TacoTip requires LibClassicGearScore")
 
--- SoD-era Pawn does not expose PawnClassicLastUpdatedVersion, so the old
--- version-only gate disabled Pawn on SoD.  Also accept Pawn's public API.
 local pawnApiPresent = type(_G.PawnGetItemData) == "function" and type(_G.PawnGetSingleValueFromItem) == "function" and
     type(_G.PawnGetScaleColor) == "function"
-local isPawnLoaded = (_G.PawnClassicLastUpdatedVersion and _G.PawnClassicLastUpdatedVersion >= 2.0538) or pawnApiPresent
+local pawnClassicVer = rawget(_G, "PawnClassicLastUpdatedVersion")
+local pawnRetailVer = rawget(_G, "PawnLastUpdatedVersion")
+local isPawnLoaded = (pawnClassicVer and pawnClassicVer >= 2.0538) or (pawnRetailVer and pawnRetailVer >= 2.0) or pawnApiPresent
 
 local Detours = LibStub("LibDetours-1.0")
-local CI = LibStub("LibClassicInspector")
+local CI = LibStub("LibForeverInspector")
 
 local L = _G.TACOTIP_LOCALE
 local TT = _G[addOnName]
@@ -332,7 +322,16 @@ local function showTooltipMover()
     if (TacoTip_CustomPosEnable) then
         TacoTip_CustomPosEnable(true)
     else
-        print("|cff59f0dcTacoTip:|r Tooltip mover is not ready yet. Try /reload.")
+        -- This is not a timing problem. TacoTip_CustomPosEnable is defined at the
+        -- very end of main.lua, the last file in the toc, so it can only be
+        -- missing because loading raised an error before reaching it. Telling the
+        -- user to /reload would be advice that cannot possibly help, so name the
+        -- actual stage that was reached instead.
+        print("|cff59f0dcTacoTip:|r Tooltip mover unavailable: main.lua stopped loading.")
+        if (TT and TT.LOAD_STAGE) then
+            print("|cff59f0dcTacoTip:|r Last stage reached: " .. tostring(TT.LOAD_STAGE))
+        end
+        print("|cff59f0dcTacoTip:|r Run /tacotip diag for the full report.")
     end
 end
 
@@ -400,6 +399,18 @@ local function registerSlashCommands()
             else
                 print("|cff59f0dcTacoTip:|r " .. L["TEXT_HELP_ANCHOR"])
             end
+        elseif (cmd == "diag" or cmd == "diagnostics") then
+            -- Load report. Exists because the mover and the tooltip pipeline are
+            -- both defined at the very end of main.lua, so a single load-time
+            -- error disables them while leaving the options frame fully
+            -- functional -- a state that is otherwise impossible to explain from
+            -- the UI. See TT:PrintDiagnostics in main.lua.
+            if (TT and TT.PrintDiagnostics) then
+                TT:PrintDiagnostics()
+            else
+                print("|cff59f0dcTacoTip:|r main.lua did not finish loading, so diagnostics are unavailable.")
+                print("|cff59f0dcTacoTip:|r Enable a Lua error handler (BugSack/Swatter) and /reload.")
+            end
         else
             if (openOptionsPanel) then
                 openOptionsPanel()
@@ -414,7 +425,7 @@ registerSlashCommands()
 
 -- main frame
 optionsFrame = CreateFrame("Frame", "TacoTipOptions")
-optionsFrame.name = addOnTitle or "TacoTip Gearscore TBC"
+optionsFrame.name = addOnTitle or "TacoTip"
 optionsFrame:SetSize(640, 400)
 local optionsPages = {
     root = optionsFrame,
@@ -443,8 +454,15 @@ local function ensureSettingsUI()
         return true
     end
     if (LoadAddOn) then
+        -- "Blizzard_Settings" / "Blizzard_SettingsDefinitions" only exist on
+        -- Retail. The Classic clients (and Forever) ship Blizzard_Settings_Shared
+        -- and Blizzard_SettingsDefinitions_Shared instead, and all of these are
+        -- already non-LoadOnDemand, so this is belt-and-braces rather than a
+        -- hard requirement.
         pcall(LoadAddOn, "Blizzard_Settings")
+        pcall(LoadAddOn, "Blizzard_Settings_Shared")
         pcall(LoadAddOn, "Blizzard_SettingsDefinitions")
+        pcall(LoadAddOn, "Blizzard_SettingsDefinitions_Shared")
     end
     return _G.Settings and _G.Settings.RegisterCanvasLayoutCategory and _G.Settings.RegisterAddOnCategory
 end
@@ -563,7 +581,6 @@ openOptionsPanel = function()
         if (_G.InterfaceOptionsFrame_Show) then
             pcall(_G.InterfaceOptionsFrame_Show)
         end
-        pcall(InterfaceOptionsFrame_OpenToCategory, optionsFrame)
         pcall(InterfaceOptionsFrame_OpenToCategory, optionsFrame)
         return
     end
@@ -875,12 +892,14 @@ local function attachHoverTooltip(frame, title, text)
     if (frame.EnableMouse) then
         frame:EnableMouse(true)
     end
-    frame:SetScript("OnEnter", function(self)
-        showHoverTooltip(self, title, text)
-    end)
-    frame:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
+    if (frame.SetScript) then
+        frame:SetScript("OnEnter", function(self)
+            showHoverTooltip(self, title, text)
+        end)
+        frame:SetScript("OnLeave", function()
+            GameTooltip:Hide()
+        end)
+    end
 end
 
 local function createWrappedText(parent, fontObject, width, text)
@@ -908,8 +927,10 @@ end
 local function createOptionsCheckbox(parent, globalName, label, tooltipDescription, onClick)
     globalName = globalName or nextModernWidgetName("Check")
     local check = CreateFrame("CheckButton", globalName, parent, "InterfaceOptionsCheckButtonTemplate")
-    check.label = _G[check:GetName() .. "Text"]
-    check.label:SetText(label)
+    check.label = _G[check:GetName() .. "Text"] or check:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    if (check.label and check.label.SetText) then
+        check.label:SetText(label)
+    end
     if (tooltipDescription and tooltipDescription ~= "") then
         check.tooltipText = label
         check.tooltipRequirement = tooltipDescription
@@ -1295,9 +1316,18 @@ local function createOptionsSlider(parent, globalName, label, tooltipDescription
     end
     slider:SetWidth(180)
     slider:EnableMouseWheel(true)
-    slider.label = _G[slider:GetName() .. "Text"]
-    slider.low = _G[slider:GetName() .. "Low"]
-    slider.high = _G[slider:GetName() .. "High"]
+    -- OptionsSliderTemplate provides Text/Low/High on every client we ship to,
+    -- but a missing one would abort the whole page build (the caller is
+    -- safeCall-wrapped, so the symptom is a silently blank options page that
+    -- re-fails on every OnShow). Create fallbacks instead, matching what the
+    -- checkbox builder at createOptionsCheckbox already does.
+    local sname = slider:GetName()
+    slider.label = _G[sname .. "Text"]
+        or slider:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    slider.low = _G[sname .. "Low"]
+        or slider:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    slider.high = _G[sname .. "High"]
+        or slider:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     slider.label:SetText(label)
     slider.low:SetText(tostring(minValue))
     slider.high:SetText(tostring(maxValue))
@@ -1345,7 +1375,7 @@ local function createOptionsSlider(parent, globalName, label, tooltipDescription
     return slider
 end
 
-local function openClassicColorPicker(initialR, initialG, initialB, onChanged)
+local function openColorPicker(initialR, initialG, initialB, onChanged)
     local colorPickerFrame = _G.ColorPickerFrame
     if (not colorPickerFrame) then
         return
@@ -1375,7 +1405,13 @@ local function openClassicColorPicker(initialR, initialG, initialB, onChanged)
 
     pcall(rawset, colorPickerFrame, "hasOpacity", false)
     pcall(rawset, colorPickerFrame, "opacity", 1)
-    pcall(rawset, colorPickerFrame, "func", applyCurrentColor)
+    -- The Classic ColorPickerFrame.xml reads "swatchFunc", not "func"
+    -- (Blizzard_FrameXML/Classic/ColorPickerFrame.xml:81-83). The previous
+    -- rawsets used "func", so this fallback would have done nothing if it were
+    -- ever reached. It is currently unreachable -- SetupColorPickerAndShow
+    -- exists on all five clients, so the modern branch above always wins -- but
+    -- it should be correct in case that changes.
+    pcall(rawset, colorPickerFrame, "swatchFunc", applyCurrentColor)
     pcall(rawset, colorPickerFrame, "opacityFunc", nil)
     pcall(rawset, colorPickerFrame, "cancelFunc", cancelColor)
     colorPickerFrame:SetColorRGB(originalR, originalG, originalB)
@@ -1433,7 +1469,7 @@ local function createColorSwatchControl(parent, globalName, label, description, 
     end
 
     control.button:SetScript("OnClick", function()
-        openClassicColorPicker(control.r, control.g, control.b, function(r, g, b)
+        openColorPicker(control.r, control.g, control.b, function(r, g, b)
             control:SetColor(r, g, b)
             onColorChanged(r, g, b)
         end)
@@ -1682,7 +1718,7 @@ local function buildRootPage()
     controls.rootChatClassColors:SetPoint("TOPLEFT", controls.rootHideInCombat, "BOTTOMLEFT", 0, -8)
 
     controls.rootShowAchievementPoints = createOptionsCheckbox(panel, nil, L["Show Achievement Points"],
-        L["OPTIONS_ACHIEVEMENT_DESC"] or "Only available on Wrath Classic clients where achievement data exists.",
+        L["OPTIONS_ACHIEVEMENT_DESC"] or "Display player's total achievement points.",
         function(_, value)
             TacoTipConfig.show_achievement_points = value
         end)
@@ -1696,15 +1732,11 @@ local function buildRootPage()
         controls.rootHideInCombat:SetChecked(TacoTipConfig.hide_in_combat)
         controls.rootUberTips:SetChecked(GetCVar("UberTooltips") == "1")
         controls.rootChatClassColors:SetChecked(GetCVar("chatClassColorOverride") == "0")
-        if (CI:IsWotlk()) then
+        local hasAchievements = CI and ((CI.IsWotlk and CI:IsWotlk()) or (CI.IsRetail and CI:IsRetail()) or (CI.IsForever and CI:IsForever()))
+        if (hasAchievements) then
             controls.rootShowAchievementPoints:SetChecked(TacoTipConfig.show_achievement_points)
             controls.rootShowAchievementPoints:SetDisabled(false)
         else
-            -- Non-Wrath clients: the feature is unavailable in-game, but the
-            -- saved preference is preserved so it survives a later WotLK
-            -- session. The disabled control simply reflects the off state;
-            -- the tooltip render path is gated on CI:IsWotlk() anyway, so a
-            -- stale saved true on Era/TBC can never display anything.
             controls.rootShowAchievementPoints:SetChecked(false)
             controls.rootShowAchievementPoints:SetDisabled(true)
         end
@@ -1780,7 +1812,7 @@ local function buildTooltipsPage()
         end)
     controls.useClassColors:SetPoint("TOPLEFT", content, "TOPLEFT", 14, builder.y)
     controls.shamanBlue = createOptionsCheckbox(content, nil, L["OPTIONS_SHAMAN_BLUE"] or "Shaman Blue",
-        L["OPTIONS_SHAMAN_BLUE_DESC"] or "Use blue instead of pink for Shaman class color on Classic Era / SoD.",
+        L["OPTIONS_SHAMAN_BLUE_DESC"] or "Use blue instead of pink for Shaman class color.",
         function(_, value)
             TacoTipConfig.shaman_blue = value
         end)
@@ -1917,9 +1949,10 @@ local function buildTooltipsPage()
         function(_, value)
             TacoTipConfig.show_power_bar = value
             -- Live sync: apply the power bar visibility change to the current tooltip immediately
-            if (GameTooltip and GameTooltip:IsShown() and TT.ApplyTooltipAppearance) then
-                local _, unit = GameTooltip:GetUnit()
-                if (unit) then
+            if (GameTooltip and GameTooltip:IsShown() and TT.ApplyTooltipAppearance
+                    and type(GameTooltip.GetUnit) == "function") then
+                local ok, _, unit = pcall(GameTooltip.GetUnit, GameTooltip)
+                if (ok and unit) then
                     TT:ApplyTooltipAppearance(GameTooltip, unit)
                 end
             end
@@ -2601,15 +2634,38 @@ local function onOptionsFrameShow(panel)
     modernGetConfig()
 end
 
-optionsPages.tooltips:SetScript("OnShow", function(panel, ...)
-    return safeCall(onPageShow, panel, ...)
-end)
-optionsPages.positioning:SetScript("OnShow", function(panel, ...)
-    return safeCall(onPageShow, panel, ...)
-end)
-optionsPages.characterInspect:SetScript("OnShow", function(panel, ...)
-    return safeCall(onPageShow, panel, ...)
-end)
+-- Retail / WoW Forever drive the canvas pages through three OPTIONAL frame
+-- handlers, documented in Blizzard_Settings_Shared/Blizzard_ImplementationReadme.lua:
+--
+--   OnRefresh  called when the settings panel is shown
+--   OnDefault  called when the panel's "restore defaults" is used
+--   OnCommit   called when the panel's Apply is used
+--
+-- The addon previously relied on OnShow alone. OnShow fires when the canvas
+-- frame becomes visible, but the Settings panel controls that visibility and
+-- reuses an already-shown frame, so a page can be re-selected without OnShow
+-- ever firing -- which leaves the controls showing stale values.
+--
+-- These are METHODS, not scripts. Blizzard calls `frame:OnRefresh()`,
+-- `frame:OnDefault()` and `frame:OnCommit()` directly
+-- (Blizzard_SettingsPanel.lua:8, :2, :557) and never SetScripts them, so they
+-- must be assigned as function fields. SetScript("OnRefresh", ...) is rejected
+-- by the C API with "bad argument #2 to 'SetScript'" -- these three names are
+-- reserved canvas handlers, not script slots. OnShow is kept because the classic
+-- InterfaceOptions_AddCategory path has no such handlers and relies on it.
+local PAGES_WITH_REFRESH = { optionsPages.tooltips, optionsPages.positioning, optionsPages.characterInspect }
+for _, page in ipairs(PAGES_WITH_REFRESH) do
+    page:SetScript("OnShow", function(panel, ...)
+        return safeCall(onPageShow, panel, ...)
+    end)
+    page.OnRefresh = onPageShow
+    page.OnDefault = onPageShow
+    page.OnCommit = onPageShow
+end
+
 optionsFrame:SetScript("OnShow", function(panel, ...)
     return safeCall(onOptionsFrameShow, panel, ...)
 end)
+optionsFrame.OnRefresh = onOptionsFrameShow
+optionsFrame.OnDefault = onOptionsFrameShow
+optionsFrame.OnCommit = onOptionsFrameShow

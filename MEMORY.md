@@ -1,6 +1,6 @@
 # TacoTip-Gearscore-TBC — Enterprise Project Memory
 
-> **Version:** `0.7.6` | **CurseForge ID:** `1555962` | **Supported Interfaces:** `11509` (Classic Era / SoD), `20506` (TBC Anniversary), `38001` (Titanforge)  
+> **Version:** `0.7.7` | **CurseForge ID:** `1555962` | **Supported Interfaces:** `11509` (Classic Era / SoD), `20506` (TBC Anniversary), `38001` (Titanforge)  
 > **Repository:** `ssdeanx/TacoTip-Gearscore-TBC` | **Maintainer:** Pilsung (AcidBomb) | **Architecture:** Multi-Client Classic Dual-Engine
 
 ---
