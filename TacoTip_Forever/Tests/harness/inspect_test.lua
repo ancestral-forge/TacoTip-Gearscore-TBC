@@ -2,7 +2,7 @@
 local root = os.getenv("TACOTIP_TEST_ROOT") or "."
 local profiles = {{2,11509,"ERA"},{5,20506,"TBC"},{11,38002,"TITANFORGE"},{1,16001,"FOREVER"},{1,120100,"RETAIL"}}
 local function setup(profile)
-    local s = {now=100, shown=false, combat=false, requests={}, errors={}, gear={}, textures={}, reads=0, clears=0,
+    local s = {now=100, shown=false, combat=false, requests={}, errors={}, gear={}, textures={}, reads=0, clears=0, ranges={}, uiErrors={}, inspectChecks=0,
         units={player="Player-P", target="Player-A", mouseover="Player-B", party1="Player-C"}, secret={}}
     for _, guid in pairs(s.units) do s.gear[guid] = {[1]="item:"..guid} end
     local e = setmetatable({}, {__index=_G}); e._G=e
@@ -16,7 +16,22 @@ local function setup(profile)
     e.UnitExists=function(u) return s.units[u]~=nil end; e.UnitIsPlayer=e.UnitExists
     e.UnitIsUnit=function(a,b) return s.units[a]==s.units[b] end
     e.InCombatLockdown=function() return s.combat end
-    e.CanInspect=e.UnitExists
+    e.CheckInteractDistance = function(unit, index)
+        assert(index == 1, "use inspect interaction distance")
+        return s.ranges[unit] ~= false
+    end
+    e.UIErrorsFrame = {AddMessage = function(_, message)
+        s.uiErrors[#s.uiErrors + 1] = message
+    end}
+    e.CanInspect = function(unit)
+        s.inspectChecks = s.inspectChecks + 1
+        if s.ranges[unit] == false then
+            -- Model an interface message, not a Lua exception caught by pcall.
+            e.UIErrorsFrame:AddMessage("Out of Range")
+            return false
+        end
+        return e.UnitExists(unit)
+    end
     e.NotifyInspect=function(u) s.requests[#s.requests+1]={guid=e.UnitGUID(u),at=s.now} end
     e.ClearInspectPlayer=function() s.clears=s.clears+1 end
     e.hooksecurefunc=function(name,hook)
@@ -209,6 +224,48 @@ local cases={
         s.lib:DoInspect("target")
         assert(#s.requests == 1)
     end},
+    {"distant player waits silently and resumes in range", function(s)
+        s.ranges.target = false
+        s.lib:DoInspect("target")
+        s:advance(4)
+        assert(s.inspectChecks == 0 and #s.requests == 0 and #s.uiErrors == 0)
+        s.ranges.target = true
+        s:advance(1)
+        assert(#s.requests == 1 and s.requests[1].guid == "Player-A")
+    end},
+    {"retry rechecks distance after player moves away", function(s)
+        s.lib:DoInspect("target")
+        s.ranges.target = false
+        s:advance(6)
+        assert(s.inspectChecks == 1 and #s.requests == 1 and #s.uiErrors == 0)
+        s.ranges.target = true
+        s:advance(1)
+        assert(#s.requests == 2)
+    end},
+    {"unknown or restricted distance skips inspect calls", function(s)
+        local checks = {
+            function() return nil end,
+            function() error("restricted") end,
+            function() return s.secret end,
+        }
+        for _, check in ipairs(checks) do
+            s.env.CheckInteractDistance = check
+            s.lib:DoInspect("target")
+            s:advance(1)
+        end
+        s.env.CheckInteractDistance = nil
+        s.lib:DoInspect("target")
+        s:advance(1)
+        assert(s.inspectChecks == 0 and #s.requests == 0 and #s.uiErrors == 0)
+    end},
+    {"manual out-of-range errors remain visible", function(s)
+        s.ranges.target = false
+        s.shown = true
+        s.lib:DoInspect("target")
+        s.env.CanInspect("target")
+        assert(#s.uiErrors == 1 and s.uiErrors[1] == "Out of Range")
+        s.uiErrors = {}
+    end},
     {"queue is bounded",function(s)
         s.combat=true
         for i=1,25 do s.units["raid"..i]="Player-"..i;s.lib:DoInspect("raid"..i) end
@@ -221,6 +278,7 @@ for _,profile in ipairs(profiles) do
         local ok,err=pcall(function()
             local s=setup(profile);case[2](s)
             assert(#s.errors==0,table.concat(s.errors,"\n"));assert(s.clears==0)
+            assert(#s.uiErrors == 0, "unexpected interface error message")
         end)
         count=count+1
         if not ok then failures=failures+1;print("FAIL "..profile[3].." "..case[1]..": "..tostring(err)) end

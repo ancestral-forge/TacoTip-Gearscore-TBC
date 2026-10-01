@@ -13,6 +13,11 @@ All notable changes to TacoTip are documented in this file.
   queue check, rotating them behind other players; repeated hovers do not reset
   the deadline. Expired requests enter the same 10-second cooldown.
   Added five regression cases across all clients after review exposed this gap.
+- Restore `CheckInteractDistance(unit, 1)` before each background `CanInspect`
+  and `NotifyInspect` attempt. Out-of-range or unknown/restricted distance defers
+  the request instead of repeatedly invoking APIs that can emit UI errors.
+  Leave manual inspection and general UI error messages untouched. Regression
+  tests model an `Out of Range` UI message rather than a caught Lua exception.
 - Respect requests from Blizzard and other addons; never clear their shared
   inspect data. Resolve changing target/mouseover tokens by GUID, including party
   and raid units. No new automatic whole-group scanning is introduced.
@@ -28,7 +33,7 @@ All notable changes to TacoTip are documented in this file.
   as fresh for 30 seconds; these are now explicit regression cases.
 - TBC Anniversary user testing confirmed that equipment loads progressively
   without hanging. Other clients have offline coverage only; their live behavior
-  remains unverified. The later availability-deferral fix has offline coverage
+  remains unverified. The later availability-deferral and range-guard fixes have offline coverage
   only. See `Tests/harness/README.md`.
 
 | Version | Date | Summary |

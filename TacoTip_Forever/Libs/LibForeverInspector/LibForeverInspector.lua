@@ -3532,7 +3532,14 @@ local function pumpQueue()
         local unit = findUnit(request.guid, request.unit)
         if (not fresh(request.guid)) then
             local ok, allowed = false, false
-            if (unit) then ok, allowed = pcall(CanInspect, unit) end
+            -- CanInspect can report UI errors; pcall cannot suppress those.
+            -- Check distance first on every attempt, including queued retries.
+            if (unit and type(CheckInteractDistance) == "function") then
+                local rangeOK, inRange = pcall(CheckInteractDistance, unit, 1)
+                if (rangeOK and plain(inRange) and inRange) then
+                    ok, allowed = pcall(CanInspect, unit)
+                end
+            end
             if (ok and plain(allowed) and allowed) then
                 request.deferUntil = nil
                 request.unit, request.sent = unit, now
